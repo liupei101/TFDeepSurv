@@ -21,9 +21,9 @@ setup(name='TFDeepSurv',
     packages = find_packages(),
     install_requires=[
         'tensorflow>=1.4.0',
+        'scipy',
         'scikit-learn>=0.19.0',
         'lifelines>=0.9.2',
-        'hyperopt==0.1',
         'supersmoother>=0.4',
     ],
 )
