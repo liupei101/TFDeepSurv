@@ -1,30 +1,7 @@
 import numpy as np
-import random
 import pandas as pd
-import pyper as pr
 from sklearn.model_selection import ShuffleSplit, train_test_split
-from tfdeepsurv import vision
 from tfdeepsurv.dataset import SimulatedData
-
-def get_cutoff(X, T, E):
-    # survivalROC to estimate the cutoff for risk groups, fpr = 1-specifity, tpr = sensitivity
-    r = pr.R(use_pandas=True)
-    r.assign("t", T)
-    r.assign("e", E)
-    r.assign("mkr", np.reshape(X, E.shape))
-    r.assign("pt", 104)
-    r.assign("mtd", "KM")
-    r.assign("nobs", X.shape[0])
-
-    r("library(survivalROC)")
-    r("src <- survivalROC(Stime = t, status = e, marker = mkr, predict.time = pt, span = 0.25*nobs^(-0.20))")
-    r("Yuden <- src$TP-src$FP")
-    r("cutoff <- src$cut.values[which(Yuden == max(Yuden), arr.ind = T)]")
-    r("abline(0,1)")
-    r("tpv <- src$TP[which(Yuden == max(Yuden), arr.ind = T)]")
-    print( 'cutoff = ', r.cutoff, 'tpv = ', r.tpv)
-    vision.plt_survROC(r.src['FP'], r.src['TP'])
-    return r.cutoff
 
 def prepare_data(x, label):
     if isinstance(label, dict):
@@ -76,23 +53,20 @@ def parse_data(x, label):
 
     return x, e, t, failures, atrisk, ties
 
-def loadSimulatedData(hr_ratio=2000, n=2000, m=10, num_var=2, seed=1):
+def load_simulated_data(hr_ratio=2000, n=2000, m=10, num_var=2, seed=1):
     data_config = SimulatedData(hr_ratio, num_var = num_var, num_features = m)
     data = data_config.generate_data(n, seed=seed)
     data_X = data['x']
     data_y = {'e': data['e'], 't': data['t']}
     return data_X, data_y
 
-def loadData(filename = "data//surv_aly_idfs.csv", 
-             tgt={'e': 'idfs_bin', 't': 'idfs_month'}, 
-             split=1.0,
-             Normalize=True,
-             seed=40):
+def load_data(filename, id_col='patient_id', tgt={'e': 'idfs_bin', 't': 'idfs_month'}, 
+              split=1.0, Normalize=True, seed=40):
+    # Read csv data
     data_all = pd.read_csv(filename)
 
-    ID = 'patient_id'
     target = list(tgt.values())
-    L = target + [ID]
+    L = target + [id_col]
     x_cols = [x for x in data_all.columns if x not in L]
 
     X = data_all[x_cols]
@@ -127,10 +101,7 @@ def loadData(filename = "data//surv_aly_idfs.csv",
                   't': test_y[tgt['t']].values}
         return train_X, train_y, test_X, test_y
 
-def loadRawData(filename, 
-                out_col=[],
-                discount=None,
-                seed=1):
+def load_raw_data(filename, out_col=[], discount=None, seed=1):
     # Get raw data(no split, has been pre-processed)
     data_all = pd.read_csv(filename)
     L = [col for col in data_all.columns if col not in out_col]

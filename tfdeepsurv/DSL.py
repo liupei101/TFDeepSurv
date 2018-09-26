@@ -2,21 +2,16 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 from lifelines.utils import concordance_index
-from lifelines.statistics import logrank_test
 from supersmoother import SuperSmoother
 
-from tfdeepsurv import vision, utils
+from tfdeepsurv import utils, vision
 
-class L2DeepSurv(object):
-    def __init__(self, X, label,
-        input_node, hidden_layers_node, output_node,
-        learning_rate=0.001, learning_rate_decay=1.0, 
-        activation='tanh', 
-        L2_reg=0.0, L1_reg=0.0, optimizer='sgd', 
-        dropout_keep_prob=1.0,
-        seed=1):
+class DSL(object):
+    def __init__(self, X, label, input_node, hidden_layers_node, output_node,
+        learning_rate=0.001, learning_rate_decay=1.0, activation='tanh', 
+        L2_reg=0.0, L1_reg=0.0, optimizer='sgd', dropout_keep_prob=1.0, seed=1):
         """
-        L2DeepSurv Class Constructor.
+        DSL Class Constructor.
 
         Parameters:
             X: np.array, covariate variables.
@@ -32,11 +27,15 @@ class L2DeepSurv(object):
             optimizer: string, type of optimize algorithm.
             dropout_keep_prob: float, probability of dropout.
             seed: set random state.
+
         Returns:
-            L2DeepSurv Class.
+            DSL Class.
+
+        Examples:
+            model = DSL(X, y, 117, [64, 32, 8], 1)
         """
         # Prepare data
-        self.train_data = {}
+        self.train_data = dict()
         self.train_data['X'], self.train_data['E'], \
             self.train_data['T'], self.train_data['failures'], \
             self.train_data['atrisk'], self.train_data['ties'] = utils.parse_data(X, label)
@@ -146,8 +145,7 @@ class L2DeepSurv(object):
         # Initialize all global variables
         self.sess.run(init_op)
 
-    def train(self, num_epoch=5000, iteration=-1, 
-              plot_train_loss=False, plot_train_CI=False):
+    def train(self, num_epoch=5000, iteration=-1, plot_train_loss=False, plot_train_ci=False):
         """
         Training DeepSurv network.
 
@@ -156,10 +154,12 @@ class L2DeepSurv(object):
             iteration: print information on train set every iteration train steps.
                        default -1, means keep silence.
             plot_train_loss: plot curve of loss value during training.
-            plot_train_CI: plot curve of CI on train set during training.
+            plot_train_ci: plot curve of CI on train set during training.
 
         Returns:
 
+        Examples:
+            model.train(num_epoch=2500, iteration=100, plot_train_loss=True, plot_train_ci=True)
         """
         # Record training steps
         loss_list = []
@@ -175,7 +175,7 @@ class L2DeepSurv(object):
             loss_list.append(loss_value)
             label = {'t': self.train_data['T'],
                      'e': self.train_data['E']}
-            CI = self._Metrics_CI(label, output_y)
+            CI = self._metrics_ci(label, output_y)
             CI_list.append(CI)
             # Print evaluation on test set
             if (iteration != -1) and (i % iteration == 0):
@@ -186,14 +186,8 @@ class L2DeepSurv(object):
         if plot_train_loss:
             vision.plot_train_curve(loss_list, title="Loss(train)")
 
-        if plot_train_CI:
+        if plot_train_ci:
             vision.plot_train_curve(CI_list, title="CI(train)")
-
-    def ties_type(self):
-        """
-        return the type of ties in train data.
-        """
-        return self.train_data['ties']
 
     def predict(self, X):
         """
@@ -204,6 +198,10 @@ class L2DeepSurv(object):
 
         Returns:
             np.array, shape(n,), Proportional risk of X.
+
+        Examples:
+            model.predict(test_X)
+            # >>> "array([0.3, 1.88, -0.1, ..., 0.98])"
         """
         # Set dropout to 1.0 when runnig prediction of model
         risk = self.sess.run([self.y], feed_dict = {self.X: X, self.keep_prob: 1.0})
@@ -212,7 +210,7 @@ class L2DeepSurv(object):
             risk = risk.reshape((1, ))
         return risk
 
-    def eval(self, X, label):
+    def score(self, X, label):
         """
         Evaluate test set using CI metrics.
 
@@ -222,9 +220,13 @@ class L2DeepSurv(object):
 
         Returns:
             CI, float
+
+        Examples:
+            model.score(X, label)
+            # >>> 0.8654
         """
         pred_risk = self.predict(X)
-        CI = self._Metrics_CI(label, pred_risk)
+        CI = self._metrics_ci(label, pred_risk)
         return CI
 
     def close(self):
@@ -234,72 +236,17 @@ class L2DeepSurv(object):
         self.sess.close()
         print("Current session closed!")
     
-    def _negative_log_likelihood(self, y_true, y_pred):
+    def get_ties(self):
         """
-        Callable loss function for DeepSurv network.
-        the negative average log-likelihood of the prediction
-        of this model under a given target distribution.
+        return the type of ties in train data.
 
-        Parameters:
-            y_true: tensor, observations. 
-            y_pred: tensor, output of network.
-
-        Returns:
-            loss value, means negative log-likelihood.
+        Examples:
+            model.get_ties()
+            # >>> "efron"
         """
-        logL = 0
-        # pre-calculate cumsum
-        cumsum_y_pred = tf.cumsum(y_pred)
-        hazard_ratio = tf.exp(y_pred)
-        cumsum_hazard_ratio = tf.cumsum(hazard_ratio)
-        if self.train_data['ties'] == 'noties':
-            log_risk = tf.log(cumsum_hazard_ratio)
-            likelihood = y_pred - log_risk
-            # dimension for E: np.array -> [None, 1]
-            uncensored_likelihood = likelihood * y_true
-            logL = -tf.reduce_sum(uncensored_likelihood)
-        else:
-            # Loop for death times
-            for t in self.train_data['failures']:                                                                       
-                tfail = self.train_data['failures'][t]
-                trisk = self.train_data['atrisk'][t]
-                d = len(tfail)
-                dr = len(trisk)
+        return self.train_data['ties']
 
-                logL += -cumsum_y_pred[tfail[-1]] + (0 if tfail[0] == 0 else cumsum_y_pred[tfail[0]-1])
-
-                if self.train_data['ties'] == 'breslow':
-                    s = cumsum_hazard_ratio[trisk[-1]]
-                    logL += tf.log(s) * d
-                elif self.train_data['ties'] == 'efron':
-                    s = cumsum_hazard_ratio[trisk[-1]]
-                    r = cumsum_hazard_ratio[tfail[-1]] - (0 if tfail[0] == 0 else cumsum_hazard_ratio[tfail[0]-1])
-                    for j in range(d):
-                        logL += tf.log(s - j * r / d)
-                else:
-                    raise NotImplementedError('tie breaking method not recognized')
-        # negative average log-likelihood
-        observations = tf.reduce_sum(y_true)
-        return logL / observations
-    
-    def _Metrics_CI(self, label_true, y_pred):
-        """
-        Compute the concordance-index value.
-
-        Parameters:
-            label_true: dict, like {'e': event, 't': time}, Observation and Time in survival analyze.
-            y_pred: np.array, predictive proportional risk of network.
-
-        Returns:
-            concordance index.
-        """
-        hr_pred = -y_pred
-        ci = concordance_index(label_true['t'],
-                               hr_pred,
-                               label_true['e'])
-        return ci
-
-    def evaluate_var_byWeights(self):
+    def get_vip_byweights(self):
         """
         evaluate feature importance by weights of NN.
         """
@@ -321,7 +268,8 @@ class L2DeepSurv(object):
             print("%dth feature score : %g." % (i, v))
         return VIP
 
-    def survivalRate(self, X, algo="wwe", base_X=None, base_label=None, smoothed=False):
+    def survival_function(self, X, algo="wwe", base_X=None, base_label=None, 
+                          smoothed=False, is_plot=True):
         """
         Estimator of survival function for data X.
 
@@ -339,14 +287,13 @@ class L2DeepSurv(object):
         risk = self.predict(X)
         hazard_ratio = np.exp(risk.reshape((risk.shape[0], 1)))
         # Estimate S0(t) using data(base_X, base_label)
-        T0, S0 = self.basesurv(algo=algo, X=base_X, label=base_label, smoothed=smoothed)
+        T0, S0 = self.base_surv(algo=algo, X=base_X, label=base_label, smoothed=smoothed)
         ST = S0**(hazard_ratio)
-
-        vision.plt_surLines(T0, ST)
-
+        if is_plot:
+            vision.plot_surv_func(T0, ST)
         return T0, ST
 
-    def basesurv(self, algo="wwe", X=None, label=None, smoothed=False):
+    def base_surv(self, algo="wwe", X=None, label=None, smoothed=False):
         """
         Estimate base survival function S0(t) based on data(X, label).
 
@@ -433,43 +380,65 @@ class L2DeepSurv(object):
 
         return T0, S0
 
-    def div_three_groups(self, data):
-        if isinstance(data, dict):
-            X, E, T = data['x'], data['e'], data['t']
-        # predict risk
-        risk = self.predict(X)
-        hr_pred = np.exp(risk)
-        # Cut-off1
-        cutoff = utils.get_cutoff(hr_pred, T, E)
-        ct1 = hr_pred >= cutoff
+    def _negative_log_likelihood(self, y_true, y_pred):
+        """
+        Callable loss function for DeepSurv network.
+        the negative average log-likelihood of the prediction
+        of this model under a given target distribution.
 
-        X1, X2 = hr_pred[ct1], hr_pred[~ct1]
-        T1, T2 = T[ct1], T[~ct1]
-        E1, E2 = E[ct1], E[~ct1]
-        
-        # cf1 cut for X1, cf2 cut for X2 
-        cutoff1 = utils.get_cutoff(X1, T1, E1)
-        cutoff2 = utils.get_cutoff(X2, T2, E2)
+        Parameters:
+            y_true: tensor, observations. 
+            y_pred: tensor, output of network.
 
-        Hgp = (hr_pred >= cutoff1)
-        Lgp = (hr_pred < cutoff2)
-        Mgp = (~Hgp) & (~Lgp)
+        Returns:
+            loss value, means negative log-likelihood.
+        """
+        logL = 0
+        # pre-calculate cumsum
+        cumsum_y_pred = tf.cumsum(y_pred)
+        hazard_ratio = tf.exp(y_pred)
+        cumsum_hazard_ratio = tf.cumsum(hazard_ratio)
+        if self.train_data['ties'] == 'noties':
+            log_risk = tf.log(cumsum_hazard_ratio)
+            likelihood = y_pred - log_risk
+            # dimension for E: np.array -> [None, 1]
+            uncensored_likelihood = likelihood * y_true
+            logL = -tf.reduce_sum(uncensored_likelihood)
+        else:
+            # Loop for death times
+            for t in self.train_data['failures']:                                                                       
+                tfail = self.train_data['failures'][t]
+                trisk = self.train_data['atrisk'][t]
+                d = len(tfail)
+                dr = len(trisk)
 
-        print('Number of high risk group :', np.sum(Hgp))
-        print('          middle risk group :', np.sum(Mgp))
-        print('          low risk group :', np.sum(Lgp))
-        Th = np.asarray(T[Hgp])
-        Eh = np.asarray(E[Hgp])
-        Tm = np.asarray(T[Mgp])
-        Em = np.asarray(E[Mgp])
-        Tl = np.asarray(T[Lgp])
-        El = np.asarray(E[Lgp])
+                logL += -cumsum_y_pred[tfail[-1]] + (0 if tfail[0] == 0 else cumsum_y_pred[tfail[0]-1])
 
-        vision.plt_riskGroups(Th, Eh, Tl, El, Tm, Em)
+                if self.train_data['ties'] == 'breslow':
+                    s = cumsum_hazard_ratio[trisk[-1]]
+                    logL += tf.log(s) * d
+                elif self.train_data['ties'] == 'efron':
+                    s = cumsum_hazard_ratio[trisk[-1]]
+                    r = cumsum_hazard_ratio[tfail[-1]] - (0 if tfail[0] == 0 else cumsum_hazard_ratio[tfail[0]-1])
+                    for j in range(d):
+                        logL += tf.log(s - j * r / d)
+                else:
+                    raise NotImplementedError('tie breaking method not recognized')
+        # negative average log-likelihood
+        observations = tf.reduce_sum(y_true)
+        return logL / observations
+    
+    def _metrics_ci(self, label_true, y_pred):
+        """
+        Compute the concordance-index value.
 
-        # logrank test
-        summary12_ = logrank_test(Th, Tm, Eh, Em, alpha=0.99)
-        summary11_ = logrank_test(Tl, Tm, El, Em, alpha=0.99)
+        Parameters:
+            label_true: dict, like {'e': event, 't': time}, Observation and Time in survival analyze.
+            y_pred: np.array, predictive proportional risk of network.
 
-        print(summary12_, summary11_)
-        print('______')
+        Returns:
+            concordance index.
+        """
+        hr_pred = -y_pred
+        ci = concordance_index(label_true['t'], hr_pred, label_true['e'])
+        return ci
