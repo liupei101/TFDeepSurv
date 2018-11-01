@@ -1,7 +1,7 @@
 TFDeepSurv
 COX Proportional risk model and survival analysis implemented by tensorflow.
 
-It'is different from DeepSurv
+Differences from DeepSurv
 DeepSurv(https://github.com/jaredleekatzman/DeepSurv) is a package for Deep COX Proportional risk model, published on Github. But our works may differ in:
 
 - Evaluate importance of features in neural network.
@@ -20,4 +20,4 @@ More properties:
 
 Scientific Hyperparameters tuning method, Bayesian Hyperparameters Optimization for neural network, which is convenient and automated for tuning hyperparameters in neural network.
 
-For more usage of Bayesian Hyperparameters Optimization, you can see BayesianHyperparamOptimization/README.md
+For more usage of Bayesian Hyperparameters Optimization, you can see bysopt/README.md

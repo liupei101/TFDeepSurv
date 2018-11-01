@@ -1,7 +1,7 @@
 # TFDeepSurv
 COX Proportional risk model and survival analysis implemented by tensorflow.
 
-## It'is different from DeepSurv
+## Differences from DeepSurv
 [DeepSurv](https://github.com/jaredleekatzman/DeepSurv) is a package for Deep COX Proportional risk model, published on Github. But our works may differ in:
 
 - Evaluate importance of features in neural network.
@@ -57,14 +57,14 @@ model = dsl.dsnn(
 )
 # Watch if ties occur
 # 'noties', 'breslow' when ties occur or 'efron' when ties occur frequently
-print(model.ties_type())
+print(model.get_ties())
 ```
 
 #### train network:
 ```python
 # Plot curve of loss and CI on train data
 model.train(num_epoch=2500, iteration=100,
-            plot_train_loss=True, plot_train_CI=True)
+            plot_train_loss=True, plot_train_ci=True)
 ```
 
 result :
@@ -107,8 +107,8 @@ Loss Value                       | CI
 ```python
 test_X = test_data['x']
 test_y = {'e': test_data['e'], 't': test_data['t']}
-print("CI on train set: %g" % model.eval(train_X, train_y))
-print("CI on test set: %g" % model.eval(test_X, test_y))
+print("CI on train set: %g" % model.score(train_X, train_y))
+print("CI on test set: %g" % model.score(test_X, test_y))
 ```
 result :
 ```
@@ -118,7 +118,7 @@ CI on test set: 0.817987
 
 #### evaluate importance of features by weights of neural network
 ```python
-model.evaluate_var_byWeights()
+model.get_vip_byweights()
 ```
 result:
 ```
@@ -137,7 +137,7 @@ result:
 #### estimate survival function of patients and plot it
 ```python
 # algo: 'wwe', 'bls' or 'kp', the algorithm for estimating survival function
-model.survivalRate(test_X[0:3], algo="wwe")
+model.survival_function(test_X[0:3], algo="wwe")
 ```
 
 result:
