@@ -16,7 +16,7 @@ research of Breast Cancer, we will update status here once paper published !
 ## Installation
 ### From source
 
-Download TFDeepSurv package and install from the directory (Python version : 3):
+Download TFDeepSurv package and install from the directory (**Python version : 3.x**):
 ```bash
 git clone https://github.com/liupei101/TFDeepSurv.git
 cd TFDeepSurv
@@ -28,7 +28,7 @@ pip install .
 #### import packages and prepare data:
 ```python
 # import package
-from tfdeepsurv import L2DeepSurv as LDS
+from tfdeepsurv import dsl
 from tfdeepsurv.dataset import SimulatedData
 # generate simulated data
 # train data : 2000 rows, 10 features, 2 related features
@@ -44,15 +44,17 @@ input_nodes = 10
 output_nodes = 1
 train_X = train_data['x']
 train_y = {'e': train_data['e'], 't': train_data['t']}
-model = LDS.L2DeepSurv(train_X, train_y,
-                      input_nodes, [6, 3], output_nodes, 
-                      learning_rate=0.2,
-                      learning_rate_decay=1.0,
-                      activation='relu', 
-                      L1_reg=0.0002, 
-                      L2_reg=0.0003, 
-                      optimizer='adam',
-                      dropout_keep_prob=1.0)
+model = dsl.dsnn(
+    train_X, train_y,
+    input_nodes, [6, 3], output_nodes, 
+    learning_rate=0.2,
+    learning_rate_decay=1.0,
+    activation='relu', 
+    L1_reg=0.0002, 
+    L2_reg=0.0003, 
+    optimizer='adam',
+    dropout_keep_prob=1.0
+)
 # Watch if ties occur
 # 'noties', 'breslow' when ties occur or 'efron' when ties occur frequently
 print(model.ties_type())
@@ -99,7 +101,7 @@ Curve of loss and CI:
 
 Loss Value                       | CI
 :-------------------------------:|:--------------------------------------:
-![](notebook/pics/index.png)|![](notebook/pics/index1.png)
+![](tools/README-loss.png)|![](tools/README-ci.png)
 
 #### evaluate model on data of train and test :
 ```python
@@ -140,9 +142,9 @@ model.survivalRate(test_X[0:3], algo="wwe")
 
 result:
 
-![Survival rate](notebook/pics/index2.png)
+![Survival rate](tools/README-surv.png)
 
 ## More properties
 Scientific Hyperparameters tuning method, Bayesian Hyperparameters Optimization for neural network, which is convenient and automated for tuning hyperparameters in neural network.
 
-For more usage of Bayesian Hyperparameters Optimization, you can see [here](BayesianHyperparamOptimization/README.md)
+For more usage of Bayesian Hyperparameters Optimization, you can see [here](bysopt/README.md)
