@@ -6,23 +6,29 @@ class SimulatedData:
         average_death = 5, end_time = 15,
         num_features = 10, num_var = 2,
         treatment_group = False):
-        """
-        Factory class for producing simulated survival data.
+        """Factory class for producing simulated survival data.
+
         Current supports two forms of simulated data:
             Linear:
                 Where risk is a linear combination of an observation's features
             Nonlinear (Gaussian):
                 A gaussian combination of covariates
-        Parameters:
-            hr_ratio: lambda_max hazard ratio.
-            average_death: average death time that is the mean of the
-                Exponentional distribution.
-            end_time: censoring time that represents an 'end of study'. Any death
-                time greater than end_time will be censored.
-            num_features: size of observation vector. Default: 10.
-            num_var: number of varaibles simulated data depends on. Default: 2.
-            treatment_group: True or False. Include an additional covariate
-                representing a binary treatment group.
+
+        Parameters
+        ----------
+        hr_ratio: int or float
+            lambda_max hazard ratio.
+        average_death: int or float
+            average death time that is the mean of the Exponentional distribution.
+        end_time: int or float
+            censoring time that represents an 'end of study'. Any death 
+            time greater than end_time will be censored.
+        num_features: int
+            size of observation vector. Default: 10.
+        num_var: int
+            number of varaibles simulated data depends on. Default: 2.
+        treatment_group: bool
+            True or False. Include an additional covariate representing a binary treatment group.
         """
 
         self.hr_ratio = hr_ratio
@@ -33,12 +39,18 @@ class SimulatedData:
         self.num_var = num_var
 
     def _linear_H(self,x):
-        """
-        Calculates a linear combination of x's features.
+        """Calculates a linear combination of x's features.
+
         Coefficients are 1, 2, ..., self.num_var, 0,..0]
-        Parameters:
-            x: (n,m) numpy array of observations
-        Returns:
+
+        Parameters
+        ----------
+        x: np.array
+            (n,m) numpy array of observations
+
+        Returns
+        -------
+        np.array
             risk: the calculated linear risk for a set of data x
         """
         # Make the coefficients [1,2,...,num_var,0,..0]
@@ -51,13 +63,20 @@ class SimulatedData:
 
     def _gaussian_H(self,x,
         c= 0.0, rad= 0.5):
-        """
-        Calculates the Gaussian function of a subset of x's features.
-        Parameters:
-            x: (n, m) numpy array of observations.
-            c: offset of Gaussian function. Default: 0.0.
-            r: Gaussian scale parameter. Default: 0.5.
-        Returns:
+        """Calculates the Gaussian function of a subset of x's features.
+
+        Parameters
+        ----------
+        x: np.array
+            (n, m) numpy array of observations.
+        c: float
+            offset of Gaussian function. Default: 0.0.
+        r: float
+            Gaussian scale parameter. Default: 0.5.
+
+        Returns
+        -------
+        np.array
             risk: the calculated Gaussian risk for a set of data x
         """
         max_hr, min_hr = log(self.hr_ratio), log(1.0 / self.hr_ratio)
@@ -73,20 +92,28 @@ class SimulatedData:
     def generate_data(self, N,
         method = 'gaussian', seed = 1, gaussian_config = {},
         **kwargs):
-        """
-        Generates a set of observations according to an exponentional Cox model.
-        Parameters:
-            N: the number of observations.
-            method: the type of simulated data. 'linear' or 'gaussian'.
-            guassian_config: dictionary of additional parameters for gaussian
-                simulation.
-        Returns:
+        """Generates a set of observations according to an exponentional Cox model.
+
+        Parameters
+        ----------
+        N: int
+            the number of observations.
+        method: string
+            the type of simulated data. 'linear' or 'gaussian'.
+        guassian_config: dict
+            dictionary of additional parameters for gaussian simulation.
+
+        Returns
+        -------
+        dict
             dataset: a dictionary object with the following keys:
-                'x' : (N,m) numpy array of observations.
-                'e' : (N) numpy array of observed time events.
-                't' : (N) numpy array of observed time intervals.
-                'hr': (N) numpy array of observed true risk.
-        See:
+            'x' : (N,m) numpy array of observations.
+            'e' : (N) numpy array of observed time events.
+            't' : (N) numpy array of observed time intervals.
+            'hr': (N) numpy array of observed true risk.
+
+        Notes
+        -----
         Peter C Austin. Generating survival times to simulate cox proportional
         hazards models with time-varying covariates. Statistics in medicine,
         31(29):3946-3958, 2012.

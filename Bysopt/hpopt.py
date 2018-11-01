@@ -1,5 +1,9 @@
 # coding=utf-8
+"""templates for tuning hyperparams using Bayesian optimization,
+read code and change anywhere if necessary.
+"""
 import sys
+import os
 import time
 import json
 import pandas as pd
@@ -7,15 +11,17 @@ import numpy as np
 import hyperopt as hpt
 from sklearn.model_selection import KFold
 
-from tfdeepsurv import L2DeepSurv as LDS
+from tfdeepsurv import dsl
 from tfdeepsurv import utils
-import os
-print(os.getcwd())
-os.chdir("/home/num_24/桌面/mywork/github/TFDeepSurv/")
+
+# Change path of workspace
+ROOTDIR = u"/home/num_24/桌面/mywork/github/TFDeepSurv/"
+os.chdir(ROOTDIR)
 
 global Logval, eval_cnt, time_start
 global train_X, train_y, validation_X, validation_y
 global hidden_layers
+
 ########## Configuration for running hyperparams tuning ##########
 # Usage: python HyperParametersTuning.py Layer1 Layer2 Layer3 ...
 
@@ -25,7 +31,8 @@ ACTIVATION_LIST = ['relu', 'tanh']
 DECAY_LIST = [1.0, 0.9999]
 
 # Change it before you running
-OUTPUT_FILE = "data//V3//raw//"
+INPUT_FILE_DIR = "data//V3//raw//"
+OUTPUT_FILE_DIR = "data//V3//raw//"
 SEED = 40
 KFOLD = 4
 MAX_EVALS = 50
@@ -67,15 +74,17 @@ def trainDeepSurv(args):
         y_cross_train = {'t' : train_y['t'][train_index], 'e' : train_y['e'][train_index]}
         y_cross_test  = {'t' : train_y['t'][test_index],  'e' : train_y['e'][test_index]}
         # Train Network
-        ds = LDS.L2DeepSurv(X_cross_train, y_cross_train,
-                            m, hidden_layers, 1,
-                            learning_rate=params['learning_rate'], 
-                            learning_rate_decay=params['learning_rate_decay'],
-                            activation=params['activation'],
-                            optimizer=params['optimizer'],
-                            L1_reg=params['L1_reg'], 
-                            L2_reg=params['L2_reg'], 
-                            dropout_keep_prob=params['dropout'])
+        ds = dsl.dsnn(
+            X_cross_train, y_cross_train,
+            m, hidden_layers, 1,
+            learning_rate=params['learning_rate'], 
+            learning_rate_decay=params['learning_rate_decay'],
+            activation=params['activation'],
+            optimizer=params['optimizer'],
+            L1_reg=params['L1_reg'], 
+            L2_reg=params['L2_reg'], 
+            dropout_keep_prob=params['dropout']
+        )
         ds.train(num_epoch=NUM_EPOCH)
         # Evaluation Network On Test Set
         ci = ds.eval(X_cross_test, y_cross_test)
@@ -102,15 +111,17 @@ def trainVdDeepSurv(args):
     params = argsTrans(args)
     print("Params: ", params)
     # Train network
-    ds = LDS.L2DeepSurv(train_X, train_y,
-                        m, hidden_layers, 1,
-                        learning_rate=params['learning_rate'], 
-                        learning_rate_decay=params['learning_rate_decay'],
-                        activation=params['activation'],
-                        optimizer=params['optimizer'],
-                        L1_reg=params['L1_reg'], 
-                        L2_reg=params['L2_reg'], 
-                        dropout_keep_prob=params['dropout'])
+    ds = dsl.dsnn(
+        train_X, train_y,
+        m, hidden_layers, 1,
+        learning_rate=params['learning_rate'], 
+        learning_rate_decay=params['learning_rate_decay'],
+        activation=params['activation'],
+        optimizer=params['optimizer'],
+        L1_reg=params['L1_reg'], 
+        L2_reg=params['L2_reg'], 
+        dropout_keep_prob=params['dropout']
+    )
     ds.train(num_epoch=NUM_EPOCH)
     # Evaluation Network On Test Set
     ci_train = ds.eval(train_X, train_y)
@@ -120,7 +131,7 @@ def trainVdDeepSurv(args):
     del ds
     # Mean of CI on cross validation set
     Logval.append({'params': params, 'ci_train': ci_train, 'ci_validation': ci_validation})
-    #wtFile(OUTPUT_FILE + sys.argv[2], Logval)
+    #wtFile(OUTPUT_FILE_DIR + sys.argv[2], Logval)
     # print remaining time
     eval_cnt += 1
     estimate_time()
@@ -136,16 +147,16 @@ def SearchParams(max_evals = 100):
     global Logval
     # For Real Data
     space = {
-              "learning_rate": hpt.hp.randint('learning_rate', 10), # [0.01, 0.10] = 0.01 * ([0, 9] + 1)
-              "learning_rate_decay": hpt.hp.randint("learning_rate_decay", 2),# [0, 1]
-              "activation": hpt.hp.randint("activation", 2), # [0, 1]
-              "optimizer": hpt.hp.randint("optimizer", 2), # [0, 1]
-              "L1_reg": hpt.hp.uniform('L1_reg', 0.0, 0.001), # [0.000, 0.001]
-              "L2_reg": hpt.hp.randint('L2_reg', 16),  # [0.005, 0.020] = 0.001 * ([0, 15] + 5)
-              "dropout": hpt.hp.randint("dropout", 5)# [0.6, 1.0] = 0.1 * ([0, 4] + 6)
-            }
+        "learning_rate": hpt.hp.randint('learning_rate', 10), # [0.01, 0.10] = 0.01 * ([0, 9] + 1)
+        "learning_rate_decay": hpt.hp.randint("learning_rate_decay", 2),# [0, 1]
+        "activation": hpt.hp.randint("activation", 2), # [0, 1]
+        "optimizer": hpt.hp.randint("optimizer", 2), # [0, 1]
+        "L1_reg": hpt.hp.uniform('L1_reg', 0.0, 0.001), # [0.000, 0.001]
+        "L2_reg": hpt.hp.randint('L2_reg', 16),  # [0.005, 0.020] = 0.001 * ([0, 15] + 5)
+        "dropout": hpt.hp.randint("dropout", 5)# [0.6, 1.0] = 0.1 * ([0, 4] + 6)
+    }
     best = hpt.fmin(trainVdDeepSurv, space, algo = hpt.tpe.suggest, max_evals = max_evals)
-    wtFile(OUTPUT_FILE + sys.argv[2], Logval)
+    wtFile(OUTPUT_FILE_DIR + sys.argv[2], Logval)
 
     print("best params:", argsTrans(best))
     print("best metrics:", -trainVdDeepSurv(best))
@@ -160,11 +171,12 @@ def main(filename, use_simulated_data=False):
         train_X, train_y = utils.loadSimulatedData()
     else:
         # load raw data
-        train_X, train_y, validation_X, validation_y = \
-            utils.loadRawData(filename,
-                              out_col=['patient_id'],
-                              discount=0.8,
-                              seed=SEED)
+        train_X, train_y, validation_X, validation_y = utils.loadRawData(
+            filename,
+            out_col = ['patient_id'],
+            discount = 0.8,
+            seed = SEED
+        )
     # assign values for global variables
     Logval = []
     hidden_layers = [int(idx) for idx in sys.argv[3:]]
@@ -180,4 +192,4 @@ def main(filename, use_simulated_data=False):
 # sys.argv[2] : hyperopt_log_idfs_train.json
 # sys.argv[3:] : 64 32 8
 if __name__ == "__main__":
-    main("data//V3//raw//" + sys.argv[1], use_simulated_data=False)
+    main(INPUT_FILE_DIR + sys.argv[1], use_simulated_data=False)

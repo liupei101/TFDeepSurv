@@ -6,33 +6,53 @@ from supersmoother import SuperSmoother
 
 from tfdeepsurv import utils, vision
 
-class DSL(object):
+class dsnn(object):
     def __init__(self, X, label, input_node, hidden_layers_node, output_node,
         learning_rate=0.001, learning_rate_decay=1.0, activation='tanh', 
         L2_reg=0.0, L1_reg=0.0, optimizer='sgd', dropout_keep_prob=1.0, seed=1):
-        """
-        DSL Class Constructor.
+        """dsnn(Deep Survival Neural Network) Class Constructor
 
-        Parameters:
-            X: np.array, covariate variables.
-            label: dict, like {'e': event, 't': time}, Observation and Time in survival analyze.
-            input_node: int, number of covariate variables.
-            hidden_layers_node: list, hidden layers in network.
-            output_node: int, number of output.
-            learning_rate: float, learning rate.
-            learning_rate_decay: float, decay of learning rate.
-            activation: string, type of activation function.
-            L1_reg: float, coefficient of L1 regularizate item.
-            L2_reg: float, coefficient of L2 regularizate item.
-            optimizer: string, type of optimize algorithm.
-            dropout_keep_prob: float, probability of dropout.
-            seed: set random state.
+        Parameters
+        ----------
+        X : np.array
+            Input data with covariate variables.
+        label : dict
+            Status and Time of patients in survival analyze,
+            example like as {'e': event, 't': time}.
+        input_node : int
+            Number of input layer.
+        hidden_layers_node : list
+            Number of nodes in hidden layers of neural network.
+        output_node : int
+            Number of output layer.
+        learning_rate : float
+            Learning rate.
+        learning_rate_decay : float
+            Decay of learning rate.
+        activation : string
+            Type of activation function. The options include `relu`, `sigmoid` and `tanh`.
+        L1_reg : float
+            Parameter of L1 regularizate item.
+        L2_reg : float
+            Parameter of L2 regularizate item.
+        optimizer : string
+            Type of optimize algorithm. The option include `sgd` and `adam`.
+        dropout_keep_prob : float
+            Probability of dropout.
+        seed : int
+            Random state settting.
 
-        Returns:
-            DSL Class.
+        Returns
+        -------
+        `dsnn class`
+            An instance of `dsnn class`.
 
-        Examples:
-            model = DSL(X, y, 117, [64, 32, 8], 1)
+        Examples
+        --------
+        >>> train_data = load_data()
+        >>> train_X = train_data['x']
+        >>> train_y = {'e': train_data['e'], 't': train_data['t']}
+        >>> model = dsnn(X, y, 117, [64, 32, 8], 1)
         """
         # Prepare data
         self.train_data = dict()
@@ -56,12 +76,19 @@ class DSL(object):
             for i in range(len(hidden_layers_node)):
                 layer_name = 'layer' + str(i+1)
                 with tf.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
-                    weights = tf.get_variable('weights', [prev_node, hidden_layers_node[i]], 
-                                              initializer=tf.truncated_normal_initializer(stddev=0.1))
+                    weights = tf.get_variable(
+                        'weights', 
+                        [prev_node, hidden_layers_node[i]], 
+                        initializer=tf.truncated_normal_initializer(stddev=0.1)
+                    )
                     self.nnweights.append(weights)
 
-                    biases = tf.get_variable('biases', [hidden_layers_node[i]],
-                                             initializer=tf.constant_initializer(0.0))
+                    biases = tf.get_variable(
+                        'biases', 
+                        [hidden_layers_node[i]],
+                        initializer=tf.constant_initializer(0.0)
+                    )
+
                     self.nnbias.append(biases)
 
                     layer_out = tf.nn.dropout(tf.matmul(prev_x, weights) + biases, keep_prob)
@@ -80,12 +107,20 @@ class DSL(object):
             # output layers
             layer_name = 'layer_last'
             with tf.variable_scope(layer_name, reuse=tf.AUTO_REUSE):
-                weights = tf.get_variable('weights', [prev_node, output_node], 
-                                          initializer=tf.truncated_normal_initializer(stddev=0.1))
+                weights = tf.get_variable(
+                    'weights', 
+                    [prev_node, output_node], 
+                    initializer=tf.truncated_normal_initializer(stddev=0.1)
+                )
+
                 self.nnweights.append(weights)
 
-                biases = tf.get_variable('biases', [output_node],
-                                         initializer=tf.constant_initializer(0.0))
+                biases = tf.get_variable(
+                    'biases', 
+                    [output_node],
+                    initializer=tf.constant_initializer(0.0)
+                )
+
                 self.nnbias.append(biases)
 
                 layer_out = tf.matmul(prev_x, weights) + biases
@@ -93,13 +128,15 @@ class DSL(object):
             y = layer_out
             # Global step
             with tf.variable_scope('training_step', reuse=tf.AUTO_REUSE):
-                global_step = tf.get_variable("global_step", [], 
-                                              dtype=tf.int32,
-                                              initializer=tf.constant_initializer(0), 
-                                              trainable=False)
+                global_step = tf.get_variable(
+                    "global_step", 
+                    [], 
+                    dtype=tf.int32,
+                    initializer=tf.constant_initializer(0), 
+                    trainable=False
+                )
             # Loss value
-            reg_item = tf.contrib.layers.l1_l2_regularizer(L1_reg,
-                                                           L2_reg)
+            reg_item = tf.contrib.layers.l1_l2_regularizer(L1_reg, L2_reg)
             reg_term = tf.contrib.layers.apply_regularization(reg_item, self.nnweights)
             loss_fun = self._negative_log_likelihood(y_, y)
             loss = loss_fun + reg_term
@@ -113,14 +150,13 @@ class DSL(object):
                 )
                 train_step = tf.train.GradientDescentOptimizer(lr).minimize(loss, global_step=global_step)
             elif optimizer == 'adam':
-                train_step = tf.train.GradientDescentOptimizer(learning_rate).\
-                                                               minimize(loss, global_step=global_step)     
+                train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss, global_step=global_step)     
             else:
                 raise NotImplementedError('activation not recognized')   
             # init op
             init_op = tf.global_variables_initializer()
         
-        # Save into class members
+        # Save as class members
         self.X = X
         self.y_ = y_
         self.keep_prob = keep_prob
@@ -140,26 +176,34 @@ class DSL(object):
             'optimizer': optimizer,
             'dropout': dropout_keep_prob
         }
-        # create new Session for the DeepSurv Class
+        # Create new Session for the DeepSurv Class
         self.sess = tf.Session(graph=G)
         # Initialize all global variables
         self.sess.run(init_op)
 
     def train(self, num_epoch=5000, iteration=-1, plot_train_loss=False, plot_train_ci=False):
-        """
-        Training DeepSurv network.
+        """Training dsnn.
 
-        Parameters:
-            num_epoch: times of iterating whole train set.
-            iteration: print information on train set every iteration train steps.
-                       default -1, means keep silence.
-            plot_train_loss: plot curve of loss value during training.
-            plot_train_ci: plot curve of CI on train set during training.
+        Parameters
+        ----------
+        num_epoch : int
+            Number of epoch.
+        iteration : int
+            Number of iteration, after which printing information of training processes.
+            
+            Default -1, means keep silence.
+        plot_train_loss : bool
+            Does plot curve of loss value during training.
+        plot_train_ci : bool
+            Dose plot curve of CI on train set during training.
 
-        Returns:
+        Returns
+        -------
+        None
 
-        Examples:
-            model.train(num_epoch=2500, iteration=100, plot_train_loss=True, plot_train_ci=True)
+        Examples
+        --------
+        >>> model.train(num_epoch=2500, iteration=100, plot_train_loss=True, plot_train_ci=True)
         """
         # Record training steps
         loss_list = []
@@ -167,14 +211,20 @@ class DSL(object):
         N = self.train_data['E'].shape[0]
         # Train steps
         for i in range(num_epoch):
-            _, output_y, loss_value, step = self.sess.run([self.train_step, self.y, self.loss, self.global_step],
-                                                          feed_dict = {self.X:  self.train_data['X'],
-                                                                       self.y_: self.train_data['E'].reshape((N, 1)),
-                                                                       self.keep_prob: self.configuration['dropout']})
+            _, output_y, loss_value, step = self.sess.run(
+                                               [self.train_step, self.y, self.loss, self.global_step],
+                                                feed_dict = {
+                                                    self.X:  self.train_data['X'],
+                                                    self.y_: self.train_data['E'].reshape((N, 1)),
+                                                    self.keep_prob: self.configuration['dropout']
+                                                }
+                                            )
             # Record information
             loss_list.append(loss_value)
-            label = {'t': self.train_data['T'],
-                     'e': self.train_data['E']}
+            label = {
+                't': self.train_data['T'],
+                'e': self.train_data['E']
+            }
             CI = self._metrics_ci(label, output_y)
             CI_list.append(CI)
             # Print evaluation on test set
@@ -188,76 +238,191 @@ class DSL(object):
 
         if plot_train_ci:
             vision.plot_train_curve(CI_list, title="CI(train)")
+            
+    def _negative_log_likelihood(self, y_true, y_pred):
+        """Callable loss function for DeepSurv network.
+
+        the negative average log-likelihood of the prediction 
+        of this model under a given target distribution.
+
+        Parameters
+        ----------
+        y_true : tf.tensor
+            Observations. 
+        y_pred : tf.tensor
+            Output of network.
+
+        Returns
+        -------
+        tf.tensor
+            Value of loss function, which means negative log-likelihood.
+        """
+        logL = 0
+        # pre-calculate cumsum
+        cumsum_y_pred = tf.cumsum(y_pred)
+        hazard_ratio = tf.exp(y_pred)
+        cumsum_hazard_ratio = tf.cumsum(hazard_ratio)
+        if self.train_data['ties'] == 'noties':
+            log_risk = tf.log(cumsum_hazard_ratio)
+            likelihood = y_pred - log_risk
+            # dimension for E: np.array -> [None, 1]
+            uncensored_likelihood = likelihood * y_true
+            logL = -tf.reduce_sum(uncensored_likelihood)
+        else:
+            # Loop for death times
+            for t in self.train_data['failures']:                                                                       
+                tfail = self.train_data['failures'][t]
+                trisk = self.train_data['atrisk'][t]
+                d = len(tfail)
+                dr = len(trisk)
+
+                logL += -cumsum_y_pred[tfail[-1]] + (0 if tfail[0] == 0 else cumsum_y_pred[tfail[0]-1])
+
+                if self.train_data['ties'] == 'breslow':
+                    s = cumsum_hazard_ratio[trisk[-1]]
+                    logL += tf.log(s) * d
+                elif self.train_data['ties'] == 'efron':
+                    s = cumsum_hazard_ratio[trisk[-1]]
+                    r = cumsum_hazard_ratio[tfail[-1]] - (0 if tfail[0] == 0 else cumsum_hazard_ratio[tfail[0]-1])
+                    for j in range(d):
+                        logL += tf.log(s - j * r / d)
+                else:
+                    raise NotImplementedError('tie breaking method not recognized')
+        # negative average log-likelihood
+        observations = tf.reduce_sum(y_true)
+        return logL / observations
+    
+    def _metrics_ci(self, label_true, y_pred):
+        """Compute the concordance-index value.
+
+        Parameters
+        ----------
+        label_true : dict
+            Status and Time of patients in survival analyze,
+            example like as {'e': event, 't': time}.
+        y_pred : np.array
+            Proportional risk.
+
+        Returns
+        -------
+        float
+            Concordance index.
+        """
+        hr_pred = -y_pred
+        ci = concordance_index(label_true['t'], hr_pred, label_true['e'])
+        return ci
 
     def predict(self, X):
-        """
-        Predict risk of X using trained network.
+        """Predict risk of X using trained dsnn.
 
-        Parameters:
-            X: np.array, shape(n, input_node), covariate variables.
+        Parameters
+        ----------
+        X : np.array
+            Input data with covariate variables, shape of which is (n, input_node).
 
-        Returns:
-            np.array, shape(n,), Proportional risk of X.
+        Returns
+        -------
+        np.array
+            Proportional risk of X, shape of which is (n, ). 
 
-        Examples:
-            model.predict(test_X)
-            # >>> "array([0.3, 1.88, -0.1, ..., 0.98])"
+        Examples
+        --------
+        >>> # "array([0.3, 1.88, -0.1, ..., 0.98])"
+        >>> model.predict(test_X)
         """
         # Set dropout to 1.0 when runnig prediction of model
-        risk = self.sess.run([self.y], feed_dict = {self.X: X, self.keep_prob: 1.0})
+        risk = self.sess.run(
+                   [self.y], 
+                   feed_dict = {self.X: X, self.keep_prob: 1.0}
+               )
         risk = np.squeeze(risk)
         if risk.shape == ():
             risk = risk.reshape((1, ))
         return risk
 
     def score(self, X, label):
-        """
-        Evaluate test set using CI metrics.
+        """Evaluate test set using CI metrics.
 
-        Parameters:
-            X: np.array, covariate variables.
-            label: dict, like {'e': event, 't': time}, Observation and Time in survival analyze.
+        Parameters
+        ----------
+        X : np.array
+            Input data with covariate variables.
+        label : dict
+            Status and Time of patients in survival analyze,
+            example like as {'e': event, 't': time}.
 
-        Returns:
-            CI, float
+        Returns
+        -------
+        float
+            Score of evaluation on testset.
 
-        Examples:
-            model.score(X, label)
-            # >>> 0.8654
+            CI would be metrics.
+
+        Examples
+        --------
+        >>> model.score(X, label)
         """
         pred_risk = self.predict(X)
         CI = self._metrics_ci(label, pred_risk)
         return CI
 
     def close(self):
-        """
-        close session of tensorflow.
+        """close session of tensorflow.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        None
+
+        Examples
+        --------
+        >>> model.close()
         """
         self.sess.close()
         print("Current session closed!")
     
     def get_ties(self):
-        """
-        return the type of ties in train data.
+        """Get the type of ties in train data.
+        
+        Parameters
+        ----------
 
-        Examples:
-            model.get_ties()
-            # >>> "efron"
+        Returns
+        -------
+        string
+            Type of ties in train data, includes "noties", "efron" and "breslow".
+
+        Examples
+        --------
+        >>> model.get_ties()
         """
         return self.train_data['ties']
 
     def get_vip_byweights(self):
+        """Evaluate feature importance by weights of dsnn according to breslow's paper.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        np.array
+            Value of importance of features.
+
+        Examples
+        --------
+        >>> model.get_vip_byweights()
         """
-        evaluate feature importance by weights of NN.
-        """
-        # fetch weights of network
+        # Fetch weights of network
         W = [self.sess.run(w) for w in self.nnweights]
         n_w = len(W)
-        # matrix multiplication for all hidden layers except last output layer
+        # Matrix multiplication for all hidden layers except last output layer
         hiddenMM = W[- 2].T
         for i in range(n_w - 3, -1, -1):
             hiddenMM = np.dot(hiddenMM, W[i].T)
-        # multiply last layer matrix and compute the sum of each variable for VIP
+        # Multiply last layer matrix and compute the sum of each variable for VIP
         last_layer = W[-1]
         s = np.dot(np.diag(last_layer[:, 0]), hiddenMM)
 
@@ -270,19 +435,32 @@ class DSL(object):
 
     def survival_function(self, X, algo="wwe", base_X=None, base_label=None, 
                           smoothed=False, is_plot=True):
-        """
-        Estimator of survival function for data X.
+        """Estimator of survival function for data X.
 
-        Parameters:
-            X: np.array, covariate variables of patients.
-            algo: algorithm for estimating survival function.
-            base_X: X of patients for estimating survival function.
-            base_label: label of patients for estimating survival function.
-            smoothed: smooth survival function or not.
+        Parameters
+        ----------
+        X : np.array
+            Input data with covariate variables.
+        algo : string
+            Algorithm for estimating survival function. 
 
-        Returns:
-            T0: time points of survival function.
-            ST: survival rate of survival function.
+            The options includes "wwe", "kp" and "bsl".
+        base_X : np.array
+            Input data of patients for estimating survival function.
+        base_label : dict
+            Input label of patients for estimating survival function.
+        smoothed : bool
+            Does smooth survival function.
+
+        Returns
+        -------
+        tuple
+            tuple is (T0, ST), T0 of it means time points of survival function, 
+            ST of it means survival rate of survival function.
+
+        Examples
+        --------
+        >>> model.survival_function(X)
         """
         risk = self.predict(X)
         hazard_ratio = np.exp(risk.reshape((risk.shape[0], 1)))
@@ -294,23 +472,40 @@ class DSL(object):
         return T0, ST
 
     def base_surv(self, algo="wwe", X=None, label=None, smoothed=False):
-        """
-        Estimate base survival function S0(t) based on data(X, label).
+        """Estimate base survival function S0(t) based on data(X, label).
 
-        Parameters:
-            algo: algorithm for estimating survival function.
-            X: X of patients for estimating survival function.
-            label: label of patients for estimating survival function.
-            smoothed: smooth survival function or not.
+        Parameters
+        ----------
+        algo : string
+            algorithm for estimating survival function.
 
-        Returns:
-            T0: time points of base survival function.
-            ST: survival rate of base survival function.
-        See:
-            Algorithm for estimating basel survival function:
-            (1). wwe: WWE(with ties)
-            (2). kp: Kalbfleisch & Prentice Estimator(without ties)
-            (3). bsl: breslow(with ties, but exists negative value)
+            The options includes "wwe", "kp" and "bsl".
+        X : np.array
+            Input data of patients for estimating survival function.
+        label : dict 
+            Input label of patients for estimating survival function.
+        smoothed : bool
+            Does smooth survival function.
+
+        Returns
+        -------
+        tuple
+            tuple is (T0, ST), T0 of it means time points of base survival function, 
+            ST of it means survival rate of base survival function.
+
+        Examples
+        --------
+        >>> model.base_surv(algo='wwe')
+
+        Notes
+        -----
+        Algorithm for estimating basel survival function:
+
+        (1). wwe: WWE(with ties)
+
+        (2). kp: Kalbfleisch & Prentice Estimator(without ties)
+
+        (3). bsl: breslow(with ties, but exists negative value)
         """
         # Get data for estimating S0(t)
         if X is None or label is None:
@@ -379,66 +574,3 @@ class DSL(object):
             S0 = ss.predict(T0)
 
         return T0, S0
-
-    def _negative_log_likelihood(self, y_true, y_pred):
-        """
-        Callable loss function for DeepSurv network.
-        the negative average log-likelihood of the prediction
-        of this model under a given target distribution.
-
-        Parameters:
-            y_true: tensor, observations. 
-            y_pred: tensor, output of network.
-
-        Returns:
-            loss value, means negative log-likelihood.
-        """
-        logL = 0
-        # pre-calculate cumsum
-        cumsum_y_pred = tf.cumsum(y_pred)
-        hazard_ratio = tf.exp(y_pred)
-        cumsum_hazard_ratio = tf.cumsum(hazard_ratio)
-        if self.train_data['ties'] == 'noties':
-            log_risk = tf.log(cumsum_hazard_ratio)
-            likelihood = y_pred - log_risk
-            # dimension for E: np.array -> [None, 1]
-            uncensored_likelihood = likelihood * y_true
-            logL = -tf.reduce_sum(uncensored_likelihood)
-        else:
-            # Loop for death times
-            for t in self.train_data['failures']:                                                                       
-                tfail = self.train_data['failures'][t]
-                trisk = self.train_data['atrisk'][t]
-                d = len(tfail)
-                dr = len(trisk)
-
-                logL += -cumsum_y_pred[tfail[-1]] + (0 if tfail[0] == 0 else cumsum_y_pred[tfail[0]-1])
-
-                if self.train_data['ties'] == 'breslow':
-                    s = cumsum_hazard_ratio[trisk[-1]]
-                    logL += tf.log(s) * d
-                elif self.train_data['ties'] == 'efron':
-                    s = cumsum_hazard_ratio[trisk[-1]]
-                    r = cumsum_hazard_ratio[tfail[-1]] - (0 if tfail[0] == 0 else cumsum_hazard_ratio[tfail[0]-1])
-                    for j in range(d):
-                        logL += tf.log(s - j * r / d)
-                else:
-                    raise NotImplementedError('tie breaking method not recognized')
-        # negative average log-likelihood
-        observations = tf.reduce_sum(y_true)
-        return logL / observations
-    
-    def _metrics_ci(self, label_true, y_pred):
-        """
-        Compute the concordance-index value.
-
-        Parameters:
-            label_true: dict, like {'e': event, 't': time}, Observation and Time in survival analyze.
-            y_pred: np.array, predictive proportional risk of network.
-
-        Returns:
-            concordance index.
-        """
-        hr_pred = -y_pred
-        ci = concordance_index(label_true['t'], hr_pred, label_true['e'])
-        return ci
