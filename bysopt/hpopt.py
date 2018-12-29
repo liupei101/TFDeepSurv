@@ -14,10 +14,6 @@ from sklearn.model_selection import KFold
 from tfdeepsurv import dsl
 from tfdeepsurv import utils
 
-# Change path of workspace
-ROOTDIR = u"/home/num_24/桌面/mywork/github/TFDeepSurv/"
-os.chdir(ROOTDIR)
-
 global Logval, eval_cnt, time_start
 global train_X, train_y, validation_X, validation_y
 global hidden_layers
@@ -36,12 +32,12 @@ OUTPUT_FILE_DIR = "data//V3//raw//"
 SEED = 40
 KFOLD = 4
 MAX_EVALS = 50
-NUM_EPOCH = 2100
 ###################################################################
 
 # Change it before you running
-def argsTrans(args):
+def args_trans(args):
     params = {}
+    params["num_rounds"] = args["num_rounds"] * 100 + 1500
     params["learning_rate"] = args["learning_rate"] * 0.01 + 0.01
     params["learning_rate_decay"] = DECAY_LIST[args["learning_rate_decay"]]
     params['activation'] = ACTIVATION_LIST[args["activation"]]
@@ -60,11 +56,11 @@ def estimate_time():
     print('Estimate the remaining time: %dh %dm %ds' % (th, tm, ts))
 
 # K-fold cross validation on TFDeepSurv
-def trainDeepSurv(args):
+def train_dsl(args):
     global Logval, eval_cnt
 
     m = train_X.shape[1]
-    params = argsTrans(args)
+    params = args_trans(args)
     ci_list = []
     # 4-KFold
     kf = KFold(n_splits=KFOLD, shuffle=True, random_state=SEED)
@@ -87,7 +83,7 @@ def trainDeepSurv(args):
         )
         ds.train(num_epoch=NUM_EPOCH)
         # Evaluation Network On Test Set
-        ci = ds.eval(X_cross_test, y_cross_test)
+        ci = ds.score(X_cross_test, y_cross_test)
         ci_list.append(ci)
         # Close Session of tensorflow
         ds.close()
@@ -104,11 +100,11 @@ def trainDeepSurv(args):
     return -ci_mean
 
 # Train and validation on TFDeepSurv
-def trainVdDeepSurv(args):
+def train_dsl_by_vd(args):
     global Logval, eval_cnt
 
     m = train_X.shape[1]
-    params = argsTrans(args)
+    params = args_trans(args)
     print("Params: ", params)
     # Train network
     ds = dsl.dsnn(
@@ -122,16 +118,15 @@ def trainVdDeepSurv(args):
         L2_reg=params['L2_reg'], 
         dropout_keep_prob=params['dropout']
     )
-    ds.train(num_epoch=NUM_EPOCH)
+    ds.train(num_epoch=params['num_rounds'])
     # Evaluation Network On Test Set
-    ci_train = ds.eval(train_X, train_y)
-    ci_validation = ds.eval(validation_X, validation_y)
+    ci_train = ds.score(train_X, train_y)
+    ci_validation = ds.score(validation_X, validation_y)
     # Close Session of tensorflow
     ds.close()
     del ds
     # Mean of CI on cross validation set
     Logval.append({'params': params, 'ci_train': ci_train, 'ci_validation': ci_validation})
-    #wtFile(OUTPUT_FILE_DIR + sys.argv[2], Logval)
     # print remaining time
     eval_cnt += 1
     estimate_time()
@@ -139,14 +134,15 @@ def trainVdDeepSurv(args):
 
     return -ci_validation
 
-def wtFile(filename, var):
+def wt_file(filename, var):
     with open(filename, 'w') as f:
         json.dump(var, f)
 
-def SearchParams(max_evals = 100):
+def search_params(max_evals = 100):
     global Logval
     # For Real Data
     space = {
+        "num_rounds": hpt.hp.randint('num_rounds', 7), # [1500, 2100] = 100 * ([0, 6]) + 1500
         "learning_rate": hpt.hp.randint('learning_rate', 10), # [0.01, 0.10] = 0.01 * ([0, 9] + 1)
         "learning_rate_decay": hpt.hp.randint("learning_rate_decay", 2),# [0, 1]
         "activation": hpt.hp.randint("activation", 2), # [0, 1]
@@ -155,11 +151,11 @@ def SearchParams(max_evals = 100):
         "L2_reg": hpt.hp.randint('L2_reg', 16),  # [0.005, 0.020] = 0.001 * ([0, 15] + 5)
         "dropout": hpt.hp.randint("dropout", 5)# [0.6, 1.0] = 0.1 * ([0, 4] + 6)
     }
-    best = hpt.fmin(trainVdDeepSurv, space, algo = hpt.tpe.suggest, max_evals = max_evals)
-    wtFile(OUTPUT_FILE_DIR + sys.argv[2], Logval)
+    best = hpt.fmin(train_dsl_by_vd, space, algo = hpt.tpe.suggest, max_evals = max_evals)
+    wt_file(OUTPUT_FILE_DIR + sys.argv[2], Logval)
 
-    print("best params:", argsTrans(best))
-    print("best metrics:", -trainVdDeepSurv(best))
+    print("best params:", args_trans(best))
+    print("best metrics:", -train_dsl_by_vd(best))
 
 def main(filename, use_simulated_data=False):
     
@@ -168,10 +164,10 @@ def main(filename, use_simulated_data=False):
     global hidden_layers
 
     if use_simulated_data:
-        train_X, train_y = utils.loadSimulatedData()
+        train_X, train_y = utils.load_simulated_data()
     else:
         # load raw data
-        train_X, train_y, validation_X, validation_y = utils.loadRawData(
+        train_X, train_y, validation_X, validation_y = utils.load_raw_data(
             filename,
             out_col = ['patient_id'],
             discount = 0.8,
@@ -186,7 +182,7 @@ def main(filename, use_simulated_data=False):
     print("Data set for SearchParams: ", len(train_X))
     print("Hidden Layers of Network: ", hidden_layers)
     # start searching params
-    SearchParams(max_evals = MAX_EVALS)
+    search_params(max_evals = MAX_EVALS)
 
 # sys.argv[1] : idfs_train_raw.csv
 # sys.argv[2] : hyperopt_log_idfs_train.json
