@@ -60,26 +60,46 @@ def load_simulated_data(hr_ratio=2000, n=2000, m=10, num_var=2, seed=1):
     data_y = {'e': data['e'], 't': data['t']}
     return data_X, data_y
 
-def load_data(filename, id_col='patient_id', tgt={'e': 'idfs_bin', 't': 'idfs_month'}, 
-              split=1.0, Normalize=True, seed=40):
+def load_data(filename, excluded_col=[], surv_col={'e': 'event', 't': 'time'}, 
+              split_ratio=1.0, normalize=True, seed=40):
+    """
+    load csv file and return standard format data for traning or testing.
+
+    Parameters
+    ----------
+    filename: str
+        file name, which only support for csv file.
+    excluded_col: list
+        columns will not be include in final returned data.
+    surv_col: dict
+        dict likes {'e': 'xx', 't': 'xxx'}, which is used to indicate columns of time 
+        and event in you survival data.
+    split_ratio: float, default 1.0
+        set `split_ratio` as 1.0, which means returning full data. Otherwise, splitted data 
+        will be returned.
+    normalize: bool
+        If true, then data will be normalized (x - meam / std).
+    seed: int
+        random seed for splitting data.
+    """
     # Read csv data
     data_all = pd.read_csv(filename)
 
-    target = list(tgt.values())
-    L = target + [id_col]
+    target = list(surv_col.values())
+    L = target + excluded_col
     x_cols = [x for x in data_all.columns if x not in L]
 
     X = data_all[x_cols]
     y = data_all[target]
     # Normalized data
-    if Normalize:
+    if normalize:
         for col in X.columns:
             X.loc[:, col] = (X.loc[:, col] - X.loc[:, col].mean()) / (X.loc[:, col].max() - X.loc[:, col].min())
     # Split data
-    if split == 1.0:
+    if split_ratio == 1.0:
         train_X, train_y = X, y
     else:
-        sss = ShuffleSplit(n_splits = 1, test_size = 1-split, random_state = seed)
+        sss = ShuffleSplit(n_splits = 1, test_size = 1-split_ratio, random_state = seed)
         for train_index, test_index in sss.split(X, y):
             train_X, test_X = X.loc[train_index, :], X.loc[test_index, :]
             train_y, test_y = y.loc[train_index, :], y.loc[test_index, :]
@@ -91,14 +111,14 @@ def load_data(filename, id_col='patient_id', tgt={'e': 'idfs_bin', 't': 'idfs_mo
     print("Y.column name:", train_y.columns)
     # Transform type of data to np.array
     train_X = train_X.values
-    train_y = {'e': train_y[tgt['e']].values,
-               't': train_y[tgt['t']].values}
-    if split == 1.0:
+    train_y = {'e': train_y[surv_col['e']].values,
+               't': train_y[surv_col['t']].values}
+    if split_ratio == 1.0:
         return train_X, train_y
     else:
         test_X = test_X.values
-        test_y = {'e': test_y[tgt['e']].values,
-                  't': test_y[tgt['t']].values}
+        test_y = {'e': test_y[surv_col['e']].values,
+                  't': test_y[surv_col['t']].values}
         return train_X, train_y, test_X, test_y
 
 def load_raw_data(filename, out_col=[], discount=None, seed=1):
