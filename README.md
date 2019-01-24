@@ -163,7 +163,7 @@ test_X, test_y = load_data('test.csv', excluded_col=['ID'], surv_col={'e': 'even
 train_X, train_y, test_X, test_y = load_data('full_data.csv', excluded_col=['ID'], surv_col={'e': 'event', 't': 'time'}, split_ratio=0.8)
 ```
 
-### Traning and testing tfdeepsurv model
+#### Traning and testing tfdeepsurv model
 This is the same as doing in simulated data.
 
 ## 5. More properties
