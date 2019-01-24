@@ -36,13 +36,14 @@ MAX_EVALS = 20
 NUM_EPOCH = 2400
 
 # Target function for evaluating network
-trainVdDeepSurv() # evaluate use train and validation set on TFDeepSurv
-trainDeepSurv()   # evaluate use K-fold cross validation  on TFDeepSurv
+train_dsl_by_vd() # evaluate use train and validation set on TFDeepSurv
+train_dsl()   # evaluate use K-fold cross validation  on TFDeepSurv
 
 # Train data, you can define you own function to load data
-train_X, train_y, validation_X, validation_y = utils.loadRawData(
+train_X, train_y, validation_X, validation_y = utils.load_data(
   filename = "data//train.csv",
-  discount = 0.8,
+  split_ratio = 0.8,
+  surv_col = {'e': 'event', 't': 'time'}
   seed = SEED
 )
 ```
