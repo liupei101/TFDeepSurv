@@ -122,7 +122,7 @@ def load_data(filename, excluded_col=[], surv_col={'e': 'event', 't': 'time'},
         return train_X, train_y, test_X, test_y
 
 def load_raw_data(filename, out_col=[], discount=None, seed=1):
-    # Get raw data(no split, has been pre-processed)
+    # Get raw data (no split, has been pre-processed)
     data_all = pd.read_csv(filename)
     L = [col for col in data_all.columns if col not in out_col]
     data_all = data_all[L]
