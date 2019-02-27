@@ -27,16 +27,58 @@ pip install .
 ### 4.1 Runing with simulated data
 #### import packages and prepare data
 ```python
-# import package
+### import package
 from tfdeepsurv import dsl
 from tfdeepsurv.dataset import SimulatedData
-# generate simulated data
-# train data : 2000 rows, 10 features, 2 related features
-data_config = SimulatedData(2000, num_var = 2, num_features = 10)
-train_data = data_config.generate_data(2000)
-# test data : 800 rows
-test_data = data_config.generate_data(800)
+### generate simulated data
+# data configuration: 
+#     hazard ratio = 2000
+#     number of features = 10
+#     number of valid features = 2
+data_generator = SimulatedData(2000, num_var=2, num_features=10)
+# training dataset: 
+#     number of rows = 2000
+#     random seed = 1
+train_data = data_generator.generate_data(2000, seed=1)
+# test dataset :
+#     number of rows = 800
+#     random seed = 1
+test_data = data_generator.generate_data(800, seed=1)
 ```
+#### Visualize survival status
+```python
+import matplotlib.pyplot as plt
+from lifelines import KaplanMeierFitter
+from lifelines.plotting import add_at_risk_counts
+
+### Visualize survival status
+fig, ax = plt.subplots(figsize=(8, 6))
+
+l_kmf = []
+# training set
+kmf = KaplanMeierFitter()
+kmf.fit(train_data['t'], event_observed=train_data['e'], label='Training Set')
+kmf.survival_function_.plot(ax=ax)
+l_kmf.append(kmf)
+# test set
+kmf = KaplanMeierFitter()
+kmf.fit(test_data['t'], event_observed=test_data['e'], label='Test Set')
+kmf.survival_function_.plot(ax=ax)
+l_kmf.append(kmf)
+
+# 
+plt.ylim(0, 1.01)
+plt.xlabel("Time")
+plt.ylabel("Survival rate")
+plt.title("Survival Curve")
+plt.legend(loc="best", title="Dataset")
+add_at_risk_counts(*l_kmf, ax=ax)
+plt.show()
+```
+
+result :
+
+![](tools/README-survival-status.png)
 
 #### Initialize your neural network
 ```python

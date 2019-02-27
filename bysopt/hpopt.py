@@ -18,13 +18,13 @@ global train_X, train_y, validation_X, validation_y
 
 #############  Configuration for Hyperparams Tuning ###############
 ### Traning Dataset ###
-INPUT_FILE_DIR = "data//"
-INPUT_FILE_NAME = "data_train.csv"
+INPUT_FILE_DIR = "C:\\Users\\Administrator\\Desktop\\"
+INPUT_FILE_NAME = "simulated_data_train.csv"
 SPLIT_RATIO = 0.8
 SPLIT_SEED = 42
 
 ### Network Structure ###
-HIDDEN_LAYERS = [64, 16, 8]
+HIDDEN_LAYERS = [6, 3]
 
 ### Search Times ###
 MAX_EVALS = 50
@@ -35,28 +35,28 @@ ACTIVATION_LIST = ['relu', 'tanh']
 DECAY_LIST = [1.0, 0.9999]
 SEARCH_SPACE = {
     "num_rounds": hpt.hp.randint('num_rounds', 7), # [1500, 2100] = 100 * ([0, 6]) + 1500
-    "learning_rate": hpt.hp.randint('learning_rate', 10), # [0.01, 0.10] = 0.01 * ([0, 9] + 1)
+    "learning_rate": hpt.hp.randint('learning_rate', 10), # [0.1, 1.0] = 0.1 * ([0, 9] + 1)
     "learning_rate_decay": hpt.hp.randint("learning_rate_decay", 2),# [0, 1]
     "activation": hpt.hp.randint("activation", 2), # [0, 1]
     "optimizer": hpt.hp.randint("optimizer", 2), # [0, 1]
     "L1_reg": hpt.hp.uniform('L1_reg', 0.0, 0.001), # [0.000, 0.001]
-    "L2_reg": hpt.hp.randint('L2_reg', 16),  # [0.005, 0.020] = 0.001 * ([0, 15] + 5)
-    "dropout": hpt.hp.randint("dropout", 5)# [0.6, 1.0] = 0.1 * ([0, 4] + 6)
+    "L2_reg": hpt.hp.uniform('L2_reg', 0.0, 0.001), # [0.000, 0.001]
+    "dropout": hpt.hp.randint("dropout", 3)# [0.8, 1.0] = 0.1 * ([0, 2] + 8)
 }
 def args_trans(args):
     params = {}
     params["num_rounds"] = args["num_rounds"] * 100 + 1500
-    params["learning_rate"] = args["learning_rate"] * 0.01 + 0.01
+    params["learning_rate"] = args["learning_rate"] * 0.1 + 0.1
     params["learning_rate_decay"] = DECAY_LIST[args["learning_rate_decay"]]
     params['activation'] = ACTIVATION_LIST[args["activation"]]
     params['optimizer'] = OPTIMIZER_LIST[args["optimizer"]]
     params['L1_reg'] = args["L1_reg"]
-    params['L2_reg'] = args["L2_reg"] * 0.001 + 0.005
-    params['dropout'] = args["dropout"] * 0.1 + 0.6
+    params['L2_reg'] = args["L2_reg"]
+    params['dropout'] = args["dropout"] * 0.1 + 0.8
     return params
 
 ### Output Result ###
-OUTPUT_FILE_DIR = "res//"
+OUTPUT_FILE_DIR = "C:\\Users\\Administrator\\Desktop\\"
 OUTPUT_FILE_NAME = "log_hpopt.json"
 
 ###################################################################
@@ -75,6 +75,7 @@ def train_dsl_by_vd(args):
     # Params transformation
     m = train_X.shape[1]
     params = args_trans(args)
+    print("Params: ", params)
     # Train network
     ds = dsl.dsnn(
         train_X, train_y,
@@ -99,7 +100,6 @@ def train_dsl_by_vd(args):
     # Print current search params and remaining time
     eval_cnt += 1
     estimate_time()
-    print("Params: ", params)
     print(">>> CI on train=%g | CI on validation=%g" % (ci_train, ci_validation))
 
     return -ci_validation
