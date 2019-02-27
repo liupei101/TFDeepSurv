@@ -86,14 +86,15 @@ input_nodes = 10
 output_nodes = 1
 train_X = train_data['x']
 train_y = {'e': train_data['e'], 't': train_data['t']}
+# the arguments of dsnn is obtained by Bayesian Hyperparameters Tuning
 model = dsl.dsnn(
     train_X, train_y,
     input_nodes, [6, 3], output_nodes, 
-    learning_rate=0.2,
+    learning_rate=0.7,
     learning_rate_decay=1.0,
     activation='relu', 
-    L1_reg=0.0002, 
-    L2_reg=0.0003, 
+    L1_reg=3.4e-5, 
+    L2_reg=8.8e-5, 
     optimizer='adam',
     dropout_keep_prob=1.0
 )
@@ -105,7 +106,7 @@ print(model.get_ties())
 #### Train neural network model
 ```python
 # Plot curve of loss and CI on train data
-model.train(num_epoch=2500, iteration=100,
+model.train(num_epoch=1900, iteration=100,
             plot_train_loss=True, plot_train_ci=True)
 ```
 
@@ -113,31 +114,23 @@ result :
 ```
 -------------------------------------------------
 training steps 1:
-loss = 7.08086.
-CI = 0.532591.
+loss = 7.07988.
+CI = 0.494411.
 -------------------------------------------------
 training steps 101:
-loss = 7.0803.
-CI = 0.557864.
+loss = 7.0797.
+CI = 0.524628.
 -------------------------------------------------
 training steps 201:
-loss = 7.07884.
-CI = 0.591186.
+loss = 7.06293.
+CI = 0.569339.
 ...
 ...
 ...
 -------------------------------------------------
-training steps 2201:
-loss = 6.29935.
-CI = 0.81826.
--------------------------------------------------
-training steps 2301:
-loss = 6.30067.
-CI = 0.818013.
--------------------------------------------------
-training steps 2401:
-loss = 6.29985.
-CI = 0.818038.
+training steps 1801:
+loss = 6.27862.
+CI = 0.823937.
 ```
 Curve of loss and CI:
 
@@ -154,8 +147,8 @@ print("CI on test set: %g" % model.score(test_X, test_y))
 ```
 result :
 ```
-CI on train set: 0.819224
-CI on test set: 0.817987
+CI on train set: 0.823772
+CI on test set: 0.812503
 ```
 
 #### Evaluate variable importance
@@ -164,16 +157,16 @@ model.get_vip_byweights()
 ```
 result:
 ```
-0th feature score : -0.157754.
-1th feature score : 1.
-2th feature score : -0.0505626.
-3th feature score : -0.0559399.
-4th feature score : 0.0426953.
-5th feature score : 0.0687309.
-6th feature score : 0.00604751.
-7th feature score : 0.0584479.
-8th feature score : -0.100448.
-9th feature score : 0.00362639.
+0th feature score : 1.
+1th feature score : 0.149105.
+2th feature score : -0.126712.
+3th feature score : 0.033377.
+4th feature score : 0.123096.
+5th feature score : 0.0321232.
+6th feature score : 0.101529.
+7th feature score : -0.0707392.
+8th feature score : -0.0415884.
+9th feature score : 0.0439712.
 ```
 
 #### Get estimation of survival function
