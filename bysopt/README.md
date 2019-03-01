@@ -8,9 +8,9 @@ Firstly, when is bayesian hyperparameters optimization needed?
 
 > Whether it runs with simulated data or real-world data, before we intialize our deep survival neural network (i.e., set parameters of `dsl.dsnn`), it is better to do hyperparameter tuning, and then feed the searched optimal hyperparameter to `dsl.dsnn`. It will drastically enhance the performance of deep survival neural network model.
 
-### How does it works?
+### How does it work?
 
-How does bayesian hyperparameters optimization works?
+How does bayesian hyperparameters optimization work?
 
 Here, we give a short introduction. See more details in [hyperopt](https://github.com/hyperopt/hyperopt)
 
