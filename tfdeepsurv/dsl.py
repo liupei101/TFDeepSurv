@@ -162,6 +162,7 @@ class dsnn(object):
         self.keep_prob = keep_prob
         self.y = y
         self.global_step = global_step
+        self.init_op = init_op
         self.loss = loss
         self.train_step = train_step
         self.configuration = {
@@ -189,13 +190,13 @@ class dsnn(object):
         num_epoch : int
             Number of epoch.
         iteration : int
-            Number of iteration, after which printing information of training processes.
+            After each `iteration`, providing information of training processes.
             
-            Default -1, means keep silence.
+            Default -1, which means keep silence.
         plot_train_loss : bool
-            Does plot curve of loss value during training.
+            Whether plot curve of loss value during training.
         plot_train_ci : bool
-            Dose plot curve of CI on train set during training.
+            Whether plot curve of CI on train set during training.
 
         Returns
         -------
@@ -230,15 +231,102 @@ class dsnn(object):
             # Print evaluation on test set
             if (iteration != -1) and (i % iteration == 0):
                 print("-------------------------------------------------")
-                print("training steps %d:\nloss = %g.\n" % (step, loss_value))
-                print("CI = %g.\n" % CI)
+                print("On training steps %d:\nloss = %g." % (step, loss_value))
+                print("CI = %g." % CI)
         # Plot curve
         if plot_train_loss:
             vision.plot_train_curve(loss_list, title="Loss(train)")
 
         if plot_train_ci:
             vision.plot_train_curve(CI_list, title="CI(train)")
+
+    def learn(self, num_epoch=5000, iteration=-1, eval_list={}, plot_loss=False, plot_ci=False):
+        """Training dsnn and watch the learning curve.
+
+        Parameters
+        ----------
+        num_epoch : int
+            Number of epoch.
+        iteration : int
+            After each `iteration`, providing information of training processes.
             
+            Default -1, means keep silence.
+        eval_list: dict
+            Survival datasets you want to evaluate or watch during training.
+
+            Default {}. You must set it like {"Data1": [d1_x, d1_y], "Data2": [d2_x, d2_y]}.
+            If you set it by default, then the `eval_list` will only include the training data
+            which you pass at begining.
+        plot_loss : bool
+            Whether plot curve of loss value on `eval_list` during training.
+
+            NOTE: This property has not been supported in latest version.
+        plot_ci : bool
+            Whether plot curve of CI on `eval_list` during training.
+
+        Returns
+        -------
+        None
+
+        Examples
+        --------
+        >>> model.learn(
+        >>>     num_epoch=2500, iteration=100, 
+        >>>     eval_list={"trainset": [train_X, train_y], "testset": [test_X, test_y]},
+        >>>     plot_train_loss=True, plot_train_ci=True
+        >>> )
+        """
+        # Clean the environment.
+        self.clean()
+        # If eval_list is empty, then set it as the traning set.
+        if len(eval_list) == 0:
+            eval_list = {
+                "trainset": [
+                    self.train_data['X'], 
+                    {
+                        't': self.train_data['T'],
+                        'e': self.train_data['E']
+                    }
+                ]
+            }
+        # Record training steps
+        data_name = [k for k in eval_list.keys()]
+        # loss_list = {}
+        CI_list = {}
+        for d in data_name:
+            # loss_list[d] = []
+            CI_list[d] = []
+        N = self.train_data['E'].shape[0]
+        # Train steps
+        for i in range(num_epoch):
+            _, output_y, loss_value, step = self.sess.run(
+                                               [self.train_step, self.y, self.loss, self.global_step],
+                                                feed_dict = {
+                                                    self.X:  self.train_data['X'],
+                                                    self.y_: self.train_data['E'].reshape((N, 1)),
+                                                    self.keep_prob: self.configuration['dropout']
+                                                }
+                                            )
+            # Record information
+            for d in data_name:
+                data_X, data_label = eval_list[d]
+                # loss_list[d].append(self.loss(data_X, data_label))
+                CI_list[d].append(self.score(data_X, data_label))
+            # Print result of evaluation on eval_list
+            if (iteration != -1) and (i % iteration == 0):
+                print("-------------------------------------------------")
+                print("On training steps %d:" % step)
+                print("\tloss on trainset = %g.\n" % loss_value)
+                for d in data_name:
+                    print("\tCI on %s: %g." % (d, CI_list[d][-1]))
+                
+        # Plot curve
+        #if plot_loss:
+        #    vision.plot_train_curve(loss_list, title="Loss(train)")
+
+        if plot_ci:
+            vision.plot_train_curve(CI_list, title="Learning Curve")
+
     def _negative_log_likelihood(self, y_true, y_pred):
         """Callable loss function for DeepSurv network.
 
@@ -383,6 +471,24 @@ class dsnn(object):
         self.sess.close()
         print("Current session closed!")
     
+    def clean(self):
+        """Clean all global variables in current graph. But the training data 
+        and hyper-parameter setttings will remain the same.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        None
+
+        Examples
+        --------
+        >>> model.clean()
+        """
+        self.sess.run(self.init_op)
+        print("Clean the running state of graph!")
+
     def get_ties(self):
         """Get the type of ties in train data.
         

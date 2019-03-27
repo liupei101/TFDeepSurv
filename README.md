@@ -25,7 +25,7 @@ pip install .
 ## 4. Get it started:
 
 ### 4.1 Runing with simulated data
-#### import packages and prepare data
+#### 4.1.1 import packages and prepare data
 ```python
 ### import package
 from tfdeepsurv import dsl
@@ -45,7 +45,7 @@ train_data = data_generator.generate_data(2000, seed=1)
 #     random seed = 1
 test_data = data_generator.generate_data(800, seed=1)
 ```
-#### Visualize survival status
+#### 4.1.2 Visualize survival status
 ```python
 import matplotlib.pyplot as plt
 from lifelines import KaplanMeierFitter
@@ -80,7 +80,7 @@ result :
 
 ![](tools/README-survival-status.png)
 
-#### Initialize your neural network
+#### 4.1.3 Initialize your neural network
 ```python
 input_nodes = 10
 output_nodes = 1
@@ -103,7 +103,13 @@ model = dsl.dsnn(
 print(model.get_ties())
 ```
 
-#### Train neural network model
+#### 4.1.4 Train neural network model
+You can train `dsnn` via two optional functions:
+
+- Only for training: `model.train()`. Refer to **Section 4.1.4.a**
+- For training model and watch the learning curve: `model.learn()`. Refer to **Section 4.1.4.b**
+
+##### 4.1.4.a Training via model.train()
 ```python
 # Plot curve of loss and CI on train data
 model.train(num_epoch=1900, iteration=100,
@@ -138,7 +144,44 @@ Loss Value                       | CI
 :-------------------------------:|:--------------------------------------:
 ![](tools/README-loss.png)|![](tools/README-ci.png)
 
-#### Evaluate model performance
+##### 4.1.4.b Training via model.learn()
+**NOTE**: 
+
+```python
+test_X = test_data['x']
+test_y = {'e': test_data['e'], 't': test_data['t']}
+# Plot learning curves on watch_list
+watch_list = {"trainset": [train_X, train_y], "testset": [test_X, test_y]}
+model.learn(num_epoch=1900, iteration=100, eval_list=watch_list,
+            plot_ci=True)
+```
+
+result :
+```
+Clean the running state of graph!
+-------------------------------------------------
+On training steps 1:
+    loss on trainset = 7.07953.
+
+    CI on trainset: 0.527526.
+    CI on testset: 0.532366.
+-------------------------------------------------
+...
+...
+...
+-------------------------------------------------
+On training steps 1801:
+    loss on trainset = 6.33327.
+
+    CI on trainset: 0.820376.
+    CI on testset: 0.814369.
+```
+
+learning curve:
+
+![](tools/README-learning-curve.png)
+
+#### 4.1.5 Evaluate model performance
 ```python
 test_X = test_data['x']
 test_y = {'e': test_data['e'], 't': test_data['t']}
@@ -151,7 +194,7 @@ CI on train set: 0.823772
 CI on test set: 0.812503
 ```
 
-#### Evaluate variable importance
+#### 4.1.6 Evaluate variable importance
 ```python
 model.get_vip_byweights()
 ```
@@ -169,7 +212,7 @@ result:
 9th feature score : 0.0439712.
 ```
 
-#### Get estimation of survival function
+#### 4.1.7 Get estimation of survival function
 ```python
 # optional algo: 'wwe', 'bls' or 'kp', the algorithm for estimating survival function
 model.survival_function(test_X[0:3], algo="wwe")
@@ -182,7 +225,7 @@ result:
 ### 4.2 Runing with real-world data
 The procedure on real-world data is similar with the described on simulated data. One we need to notice is data preparation. This package provides functions for loading standard dataset for traning or testing.
 
-#### load real-world data
+#### 4.2.1 load real-world data
 ```python
 # import package
 from tfdeepsurv import dsl
@@ -198,7 +241,7 @@ test_X, test_y = load_data('test.csv', excluded_col=['ID'], surv_col={'e': 'even
 train_X, train_y, test_X, test_y = load_data('full_data.csv', excluded_col=['ID'], surv_col={'e': 'event', 't': 'time'}, split_ratio=0.8)
 ```
 
-#### Traning or testing tfdeepsurv model
+#### 4.2.2 Traning or testing tfdeepsurv model
 This is the same as doing in simulated data.
 
 ## 5. More properties
