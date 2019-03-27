@@ -106,8 +106,8 @@ print(model.get_ties())
 #### 4.1.4 Train neural network model
 You can train `dsnn` via two optional functions:
 
-- Only for training: `model.train()`. Refer to (#section 4.1.4.a)[#414a-training-via-modeltrain]
-- For training model and watch the learning curve: `model.learn()`. Refer to (#section 4.1.4.b)[#414b-training-via-modellearn]
+- Only for training: `model.train()`. Refer to [#section 4.1.4.a](#414a-training-via-modeltrain)
+- For training model and watch the learning curve: `model.learn()`. Refer to [#section 4.1.4.b](#414b-training-via-modellearn)
 
 ##### 4.1.4.a Training via model.train()
 ```python
@@ -127,9 +127,6 @@ training steps 101:
 loss = 7.0797.
 CI = 0.524628.
 -------------------------------------------------
-training steps 201:
-loss = 7.06293.
-CI = 0.569339.
 ...
 ...
 ...
