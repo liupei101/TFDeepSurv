@@ -211,8 +211,9 @@ result:
 
 #### 4.1.7 Get estimation of survival function
 ```python
-# optional algo: 'wwe', 'bls' or 'kp', the algorithm for estimating survival function
-model.survival_function(test_X[0:3], algo="wwe")
+# classical algorithm 'bsl' for estimating the baseline survival function is RECOMMENDED
+# optional algo: 'wwe', 'bsl' or 'kp', the algorithm for estimating survival function
+model.survival_function(test_X[0:3], algo="bsl")
 ```
 
 result:

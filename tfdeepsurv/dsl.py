@@ -577,7 +577,7 @@ class dsnn(object):
             vision.plot_surv_func(T0, ST)
         return T0, ST
 
-    def base_surv(self, algo="wwe", X=None, label=None, smoothed=False):
+    def base_surv(self, algo="bsl", X=None, label=None, smoothed=False):
         """Estimate base survival function S0(t) based on data(X, label).
 
         Parameters
@@ -635,7 +635,7 @@ class dsnn(object):
                     dt = len(failures[t]) * 1.0
                     s = np.sum(hz_ratio[trisk])
                     cj = 1 - dt / (dt + s)
-                    s0.append(cj)
+                    s0.append(np.exp(cj - 1))
                 else:
                     s0.append(1)
         elif algo == 'kp':
@@ -649,7 +649,7 @@ class dsnn(object):
                     s = np.sum(hz_ratio[trisk])
                     si = hz_ratio[failures[t][0]]
                     cj = (1 - si / s) ** (1 / si)
-                    s0.append(cj)
+                    s0.append(np.exp(cj - 1))
                 else:
                     s0.append(1)
         elif algo == 'bsl':
@@ -663,7 +663,7 @@ class dsnn(object):
                     dt = len(failures[t]) * 1.0
                     s = np.sum(hz_ratio[trisk])
                     cj = 1 - dt / s
-                    s0.append(cj)
+                    s0.append(np.exp(cj - 1))
                 else:
                     s0.append(1)
         else:
