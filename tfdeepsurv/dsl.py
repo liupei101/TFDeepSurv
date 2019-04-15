@@ -507,7 +507,9 @@ class dsnn(object):
         return self.train_data['ties']
 
     def get_vip_byweights(self):
-        """Evaluate feature importance by weights of dsnn according to breslow's paper.
+        """Evaluate feature importance via the weights of dsnn. More could be seen in 
+        [this](G. D. Garson, “Interpreting neural network connection weights,” Artificial 
+        Intelligence Expert, vol. 6, no. 4, pp. 46–51, Apr. 1991.)
 
         Parameters
         ----------
