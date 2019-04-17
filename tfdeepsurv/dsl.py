@@ -4,7 +4,7 @@ import tensorflow as tf
 from lifelines.utils import concordance_index
 from supersmoother import SuperSmoother
 
-from tfdeepsurv import utils, vision
+from . import utils, vision
 
 class dsnn(object):
     def __init__(self, X, label, input_node, hidden_layers_node, output_node,
