@@ -4,7 +4,7 @@ with open('README.txt') as file:
     long_description = file.read()
 
 setup(name='TFDeepSurv',
-    version='2.0',
+    version='2.0.0',
     description='Deep Cox Proportional Hazards Network implemented by tensorflow framework and survival analysis.',
     keywords = "survival analysis deep learning cox regression tensorflow",
     url='https://github.com/liupei101/TFDeepSurv',
@@ -20,9 +20,10 @@ setup(name='TFDeepSurv',
     ],
     packages = find_packages(),
     install_requires=[
-        'tensorflow>=1.4.0',
-        'scipy',
-        'scikit-learn>=0.19.0',
-        'lifelines>=0.9.2'
+        'tensorflow>=1.10.0',
+        'pandas>=0.24.2',
+        'numpy>=1.14.5',
+        'matplotlib>=3.0.3',
+        'lifelines>=0.14.6'
     ],
 )

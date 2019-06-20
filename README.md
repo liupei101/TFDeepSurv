@@ -1,16 +1,22 @@
 # TFDeepSurv
 Deep Cox proportional risk model and survival analysis implemented by tensorflow.
 
+**NOTE:** `tfdeepsurv-v2.0.0` has been released. Compared with `v1.0`, current refactored version  largely improved:
+- speed of model compatation graph building
+- loss function compatation via only raw tensorflow ops.
+- unified format of survival data
+- code elegance and simplicity
+
 ## 1. Differences from DeepSurv
 [DeepSurv](https://github.com/jaredleekatzman/DeepSurv), a package of Deep Cox proportional risk model, is open-source on Github. But our works may shine in:
 
-- Evaluating variable importance in deep neural network.
-- Identifying ties of death time in your survival data, which means different loss function and estimator for survival function (`Breslow` or `Efron` approximation).
+- Supporting ties of death time in your survival data, which means different loss function and estimator for survival function (`Breslow` approximation).
 - Providing survival function estimated by three optional algorithm.
 - Tuning hyperparameters of DNN using scientific method - Bayesian Hyperparameters Optimization.
+- Implementing by the popular deep learning framework - tensorflow
 
 ## 2. Statement
-The project is based on the research of Breast Cancer. The paper about this project has been submitted to IEEE JBHI. We will update status here once paper published !
+The project is based on the research of Breast Cancer.
 
 ## 3. Installation
 ### From source
@@ -25,115 +31,124 @@ pip install .
 ## 4. Get it started:
 
 ### 4.1 Runing with simulated data
-#### 4.1.1 import packages and prepare data
+
+Read [Notebook - tfdeepsurv_data_simulated.ipynb](examples/tfdeepsurv_data_simulated.ipynb) for more details!
+
+#### 4.1.1 prepare datasets
 ```python
-### import package
-from tfdeepsurv import dsl
-from tfdeepsurv.dataset import SimulatedData
-### generate simulated data
+from tfdeepsurv.datasets import load_simulated_data
+
+### generate simulated data (Pandas.DataFrame)
 # data configuration: 
 #     hazard ratio = 2000
 #     number of features = 10
 #     number of valid features = 2
-data_generator = SimulatedData(2000, num_var=2, num_features=10)
-# training dataset: 
-#     number of rows = 2000
-#     random seed = 1
-train_data = data_generator.generate_data(2000, seed=1)
-# test dataset :
-#     number of rows = 800
-#     random seed = 1
-test_data = data_generator.generate_data(800, seed=1)
+
+# No. of training data = 2000
+train_data = load_simulated_data(2000, N=2000, num_var=2, num_features=10, seed=1)
+# No. of training data = 800
+test_data = load_simulated_data(2000, N=800, num_var=2, num_features=10, seed=1)
 ```
-#### 4.1.2 Visualize survival status
+
+#### 4.1.2 obtain statistics of survival dataset
 ```python
-import matplotlib.pyplot as plt
-from lifelines import KaplanMeierFitter
-from lifelines.plotting import add_at_risk_counts
+from tfdeepsurv.datasets import survival_stats
 
-### Visualize survival status
-fig, ax = plt.subplots(figsize=(8, 6))
-
-l_kmf = []
-# training set
-kmf = KaplanMeierFitter()
-kmf.fit(train_data['t'], event_observed=train_data['e'], label='Training Set')
-kmf.survival_function_.plot(ax=ax)
-l_kmf.append(kmf)
-# test set
-kmf = KaplanMeierFitter()
-kmf.fit(test_data['t'], event_observed=test_data['e'], label='Test Set')
-kmf.survival_function_.plot(ax=ax)
-l_kmf.append(kmf)
-
-# 
-plt.ylim(0, 1.01)
-plt.xlabel("Time")
-plt.ylabel("Survival rate")
-plt.title("Survival Curve")
-plt.legend(loc="best", title="Dataset")
-add_at_risk_counts(*l_kmf, ax=ax)
-plt.show()
+survival_stats(train_data, t_col="t", e_col="e", plot=True)
 ```
 
 result :
+```txt
+--------------- Survival Data Statistics ---------------
+# Rows: 2000
+# Columns: 10 + e + t
+# Events Ratio: 0.74%
+# Min Time: 0.0001404392
+# Max Time: 15.0
+```
 
 ![](tools/README-survival-status.png)
 
-#### 4.1.3 Initialize your neural network
 ```python
-input_nodes = 10
-output_nodes = 1
-train_X = train_data['x']
-train_y = {'e': train_data['e'], 't': train_data['t']}
-# the arguments of dsnn is obtained by Bayesian Hyperparameters Tuning
-model = dsl.dsnn(
-    train_X, train_y,
-    input_nodes, [6, 3], output_nodes, 
-    learning_rate=0.7,
-    learning_rate_decay=1.0,
-    activation='relu', 
-    L1_reg=3.4e-5, 
-    L2_reg=8.8e-5, 
-    optimizer='adam',
-    dropout_keep_prob=1.0
-)
-# Get the type of ties (three types)
-# 'noties', 'breslow' when ties occur or 'efron' when ties occur frequently
-print(model.get_ties())
+survival_stats(train_data, t_col="t", e_col="e", plot=False)
+
+#--------------- Survival Data Statistics ---------------
+# Rows: 2000
+# Columns: 10 + e + t
+# Events Ratio: 0.74%
+# Min Time: 0.0001404392
+# Max Time: 15.0
 ```
 
-#### 4.1.4 Train neural network model
-You can train `dsnn` via two optional functions:
+#### 4.1.3 transfrom survival data
 
-- Only for training: `model.train()`. Refer to [#section 4.1.4.a](#414a-training-via-modeltrain)
-- For training model and watch the learning curve: `model.learn()`. Refer to [#section 4.1.4.b](#414b-training-via-modellearn)
+The transformed survival data contains an new label. Negtive values are considered as right censored, and positive values are considered as event occurrence.
 
-##### 4.1.4.a Training via model.train()
+**NOTE**: In version 2.0, survival data must be transformed via `tfdeepsurv.datasets.survival_df`.
+
 ```python
-# Plot curve of loss and CI on train data
-model.train(num_epoch=1900, iteration=100,
-            plot_train_loss=True, plot_train_ci=True)
+from tfdeepsurv.datasets import survival_df
+
+surv_train = survival_df(train_data, t_col="t", e_col="e", label_col="Y")
+surv_test = survival_df(test_data, t_col="t", e_col="e", label_col="Y")
+
+# columns 't' and 'e' are packed into an new column 'Y'
+```
+
+#### 4.1.4 initialize your neural network
+```python
+from tfdeepsurv import dsnn
+
+input_nodes = 10
+hidden_layers_nodes = [6, 3, 1]
+
+# the arguments of dsnn can be obtained by Bayesian Hyperparameters Tuning
+nn_config = {
+    "learning_rate": 0.7,
+    "learning_rate_decay": 1.0,
+    "activation": 'relu', 
+    "L1_reg": 3.4e-5, 
+    "L2_reg": 8.8e-5, 
+    "optimizer": 'sgd',
+    "dropout_keep_prob": 1.0,
+    "seed": 1
+}
+# ESSENTIAL STEP: Pass arguments
+model = dsnn(
+    input_nodes, 
+    hidden_layers_nodes,
+    nn_config
+)
+
+# ESSENTIAL STEP: Build Computation Graph
+model.build_graph()
+```
+
+#### 4.1.5 train your neural network model
+
+```python
+Y_col = ["Y"]
+X_cols = [c for c in surv_train.columns if c not in Y_col]
+
+# model saving and loading is also supported!
+# read comments of `train()` function if necessary.
+watch_list = model.train(
+    surv_train[X_cols], surv_train[Y_col],
+    num_steps=1900,
+    num_skip_steps=100,
+    plot=True
+)
 ```
 
 result :
 ```
--------------------------------------------------
-training steps 1:
-loss = 7.07988.
-CI = 0.494411.
--------------------------------------------------
-training steps 101:
-loss = 7.0797.
-CI = 0.524628.
--------------------------------------------------
+Average loss at step 100: 6.29702
+Average loss at step 200: 6.29701
+Average loss at step 300: 6.29700
 ...
-...
-...
--------------------------------------------------
-training steps 1801:
-loss = 6.27862.
-CI = 0.823937.
+Average loss at step 1700: 5.99277
+Average loss at step 1800: 5.98749
+Average loss at step 1900: 5.98466
 ```
 Curve of loss and CI:
 
@@ -141,106 +156,54 @@ Loss Value                       | CI
 :-------------------------------:|:--------------------------------------:
 ![](tools/README-loss.png)|![](tools/README-ci.png)
 
-##### 4.1.4.b Training via model.learn()
-**NOTE**: the function will firstly clean the running state and then train the model from zero.
-
+#### 4.1.6 evaluate model performance
 ```python
-test_X = test_data['x']
-test_y = {'e': test_data['e'], 't': test_data['t']}
-# Plot learning curves on watch_list
-watch_list = {"trainset": [train_X, train_y], "testset": [test_X, test_y]}
-model.learn(num_epoch=1900, iteration=100, eval_list=watch_list,
-            plot_ci=True)
+print("CI on training data:", model.evals(surv_train[X_cols], surv_train[Y_col]))
+print("CI on test data:", model.evals(surv_test[X_cols], surv_test[Y_col]))
 ```
 
 result :
-```
-Clean the running state of graph!
--------------------------------------------------
-On training steps 1:
-    loss on trainset = 7.07953.
-
-    CI on trainset: 0.527526.
-    CI on testset: 0.532366.
--------------------------------------------------
-...
-...
-...
--------------------------------------------------
-On training steps 1801:
-    loss on trainset = 6.33327.
-
-    CI on trainset: 0.820376.
-    CI on testset: 0.814369.
+```txt
+CI on training data: 0.8070749683759434
+CI on test data: 0.8098841802686211
 ```
 
-learning curve:
+#### 4.1.7 Model prediction
 
-![](tools/README-learning-curve.png)
+Model prediction includes:
+- predicting hazard ratio or log hazard ratio
+- predicting survival function
 
-#### 4.1.5 Evaluate model performance
 ```python
-test_X = test_data['x']
-test_y = {'e': test_data['e'], 't': test_data['t']}
-print("CI on train set: %g" % model.score(train_X, train_y))
-print("CI on test set: %g" % model.score(test_X, test_y))
-```
-result :
-```
-CI on train set: 0.823772
-CI on test set: 0.812503
-```
+# predict log hazard ratio
+print(model.predict(surv_test.loc[0:10, X_cols]))
+# predict hazard ratio
+print(model.predict(surv_test.loc[0:10, X_cols], output_margin=False))
 
-#### 4.1.6 Evaluate variable importance
-```python
-model.get_vip_byweights()
 ```
 result:
-```
-0th feature score : 1.
-1th feature score : 0.149105.
-2th feature score : -0.126712.
-3th feature score : 0.033377.
-4th feature score : 0.123096.
-5th feature score : 0.0321232.
-6th feature score : 0.101529.
-7th feature score : -0.0707392.
-8th feature score : -0.0415884.
-9th feature score : 0.0439712.
+```txt
+[[1.3238575]
+ ...
+ [1.0372685]]
+
+[[ 3.7578897]
+ ...
+ [ 2.8214996]]
 ```
 
-#### 4.1.7 Get estimation of survival function
 ```python
-# classical algorithm 'bsl' for estimating the baseline survival function is RECOMMENDED
-# optional algo: 'wwe', 'bsl' or 'kp', the algorithm for estimating survival function
-model.survival_function(test_X[0:3], algo="bsl")
+# predict survival function
+model.predict_survival_function(surv_test.loc[0:5, X_cols], plot=True)
 ```
-
 result:
 
 ![Survival rate](tools/README-surv.png)
 
 ### 4.2 Runing with real-world data
-The procedure on real-world data is similar with the described on simulated data. One we need to notice is data preparation. This package provides functions for loading standard dataset for traning or testing.
+The procedure on real-world data is similar with the described on simulated data. One we need to notice is data preparation.
 
-#### 4.2.1 load real-world data
-```python
-# import package
-from tfdeepsurv import dsl
-from tfdeepsurv.utils import load_data
-
-# Notice: the object train_X or test_X returned from function load_data is numpy.array.
-# the object train_y or test_y returned from function load_data is dict like {'e': numpy.array,'t': numpy.array}.
-
-# You can load training data and testing data, respectively
-train_X, train_y = load_data('train.csv', excluded_col=['ID'], surv_col={'e': 'event', 't': 'time'})
-test_X, test_y = load_data('test.csv', excluded_col=['ID'], surv_col={'e': 'event', 't': 'time'})
-# Or load full data, then split it into training and testing set (=8:2).
-train_X, train_y, test_X, test_y = load_data('full_data.csv', excluded_col=['ID'], surv_col={'e': 'event', 't': 'time'}, split_ratio=0.8)
-```
-
-#### 4.2.2 Traning or testing tfdeepsurv model
-This is the same as doing in simulated data.
+More details can refer to [Notebook - tfdeepsurv_data_real.ipynb](examples/tfdeepsurv_data_real.ipynb).
 
 ## 5. More properties
 We provide tools for hyperparameters tuning (Bayesian Hyperparameters Optimization) in deep neural network, which is automatic in searching optimal hyperparameters of DNN.
