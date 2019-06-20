@@ -1,5 +1,6 @@
-# This file is inherited from DeepSurv for generating 
-# simulated survival data.
+"""
+This file is inherited from DeepSurv for generating simulated survival data.
+"""
 from math import log, exp
 import numpy as np
 
