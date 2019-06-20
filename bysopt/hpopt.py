@@ -24,13 +24,13 @@ SPLIT_RATIO = 0.8
 SPLIT_SEED = 42
 
 ### Network Structure ###
-HIDDEN_LAYERS = [6, 3]
+HIDDEN_LAYERS = [6, 3, 1]
 
 ### Search Times ###
 MAX_EVALS = 50
 
 ### Search Space ###
-OPTIMIZER_LIST = ['sgd', 'adam']
+OPTIMIZER_LIST = ['sgd', 'adam', 'rms']
 ACTIVATION_LIST = ['relu', 'tanh']
 DECAY_LIST = [1.0, 0.9999]
 SEARCH_SPACE = {
