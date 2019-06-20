@@ -23,8 +23,8 @@ def survival_stats(data, t_col="t", e_col="e", plot=False):
     print("--------------- Survival Data Statistics ---------------")
     N = len(data)
     print("# Rows:", N)
-    print("# Columns: %d + %s + %s" % (len(data.columns), e_col, t_col))
-    print("# Events Ratio: %.2f%%" % 1.0 * data[e_col].sum() / N)
+    print("# Columns: %d + %s + %s" % (len(data.columns) - 2, e_col, t_col))
+    print("# Events Ratio: %.2f%%" % (1.0 * data[e_col].sum() / N))
     print("# Min Time:", data[t_col].min())
     print("# Max Time:", data[t_col].max())
     print("")
@@ -111,4 +111,4 @@ def load_simulated_data(hr_ratio,
     df = pd.DataFrame(raw_data['x'], columns=['x_' + str(i) for i in range(num_features)])
     df['e'] = raw_data['e']
     df['t'] = raw_data['t']
-    return survival_df(df, t_col="t", e_col="e", label_col="Y")
+    return df

@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import numpy as np
 import tensorflow as tf
 
 from .utils import _check_config
@@ -35,7 +36,7 @@ class dsnn(object):
                 "seed": 42
             }
         """
-        super(model, self).__init__()
+        super(dsnn, self).__init__()
         # neural nodes
         self.input_nodes = input_nodes
         self.hidden_layers_nodes = hidden_layers_nodes
@@ -70,11 +71,11 @@ class dsnn(object):
 
             layer_out = tf.nn.dropout(tf.matmul(x, w) + b, self.keep_prob)
 
-            if activation == 'relu':
+            if self.config['activation'] == 'relu':
                 layer_out = tf.nn.relu(layer_out)
-            elif activation == 'sigmoid':
+            elif self.config['activation'] == 'sigmoid':
                 layer_out = tf.nn.sigmoid(layer_out)
-            elif activation == 'tanh':
+            elif self.config['activation'] == 'tanh':
                 layer_out = tf.nn.tanh(layer_out)
             else:
                 raise NotImplementedError('activation not recognized')
@@ -109,6 +110,7 @@ class dsnn(object):
             Y_hat_c = tf.squeeze(self.Y_hat)
             Y_label_T = tf.abs(Y_c)
             Y_label_E = tf.cast(tf.greater(Y_c, 0), dtype=tf.float32)
+            Obs = tf.reduce_sum(Y_label_E)
 
             Y_hat_hr = tf.exp(Y_hat_c)
             Y_hat_cumsum = tf.log(tf.cumsum(Y_hat_hr))
@@ -126,7 +128,7 @@ class dsnn(object):
             # Compute S1
             loss_s1 = tf.reduce_sum(tf.multiply(Y_hat_c, Y_label_E))
             # Compute Breslow Loss
-            loss_breslow = tf.subtract(loss_s2, loss_s1)
+            loss_breslow = tf.divide(tf.subtract(loss_s2, loss_s1), Obs)
 
             # Compute Regularization Term Loss
             reg_item = tf.contrib.layers.l1_l2_regularizer(self.config["L1_reg"], self.config["L2_reg"])
@@ -208,7 +210,7 @@ class dsnn(object):
         # we use this to calculate late average loss in the last SKIP_STEP steps
         total_loss = 0.0
         # Get current global step
-        initial_step = self.global_step.eval()
+        initial_step = self.global_step.eval(session=self.sess)
         # Record evaluations during training
         watch_list = {'loss': [], 'metrics': []}
         for index in range(initial_step, initial_step + num_steps):
@@ -218,7 +220,7 @@ class dsnn(object):
             watch_list['metrics'].append(concordance_index(self.train_data_y.values, y_hat))
             total_loss += loss_value
             if (index + 1) % num_skip_steps == 0:
-                print('Average loss at step {}: {:5.1f}'.format(index, total_loss / num_skip_steps))
+                print('Average loss at step {}: {:.5f}'.format(index + 1, total_loss / num_skip_steps))
                 total_loss = 0.0
 
         # we only save the final trained model
@@ -263,6 +265,7 @@ class dsnn(object):
         """
         # we set dropout to 1.0 when making prediction
         log_hr = self.sess.run([self.Y_hat], feed_dict={self.X: X.values, self.keep_prob: 1.0})
+        log_hr = log_hr[0]
         if output_margin:
             return log_hr
         return np.exp(log_hr)

@@ -65,11 +65,11 @@ def _prepare_surv_data(surv_data_X, surv_data_y):
     """
     _check_surv_data(surv_data_X, surv_data_y)
     # sort by T desc
-    T = np.abs(np.array(surv_data_y))
+    T = np.abs(np.squeeze(np.array(surv_data_y)))
     sorted_idx = np.argsort(T)
     return sorted_idx, surv_data_X.iloc[sorted_idx, :], surv_data_y.iloc[sorted_idx, :]
 
-def concordance_index(self, y_true, y_pred):
+def concordance_index(y_true, y_pred):
     """
     Compute the concordance-index value.
 
@@ -85,9 +85,11 @@ def concordance_index(self, y_true, y_pred):
     float
         Concordance index.
     """
+    y_true = np.squeeze(y_true)
+    y_pred = np.squeeze(y_pred)
     t = np.abs(y_true)
     e = (y_true > 0).astype(np.int32)
-    ci_value = ci(t, -y_pred, e)
+    ci_value = ci(t, y_pred, e)
     return ci_value
 
 def _baseline_hazard(label_e, label_t, pred_hr):
@@ -131,4 +133,4 @@ def baseline_survival_function(y, pred_hr):
     # unpack label
     t = np.abs(y)
     e = (y > 0).astype(np.int32)
-    return _baseline_survival_function_(e, t, pred_hr)
+    return _baseline_survival_function(e, t, pred_hr)

@@ -4,13 +4,13 @@ import matplotlib.pyplot as plt
 def plot_train_curve(L, title='Training Curve'):
     if type(L) == list:
         x = range(1, len(L) + 1)
-        plt.plot(x, L, label="evaluation set")
+        plt.plot(x, L, label="Learning Curve")
     elif type(L) == dict:
         for k, v in L.items():
             x = range(1, len(v) + 1)
             plt.plot(x, v, label=k)
     # no ticks
-    plt.xticks([])
+    plt.xlabel("Steps")
     plt.legend(loc="best")
     plt.title(title)
     plt.show()

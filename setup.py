@@ -4,7 +4,7 @@ with open('README.txt') as file:
     long_description = file.read()
 
 setup(name='TFDeepSurv',
-    version='1.0.4',
+    version='2.0',
     description='Deep Cox Proportional Hazards Network implemented by tensorflow framework and survival analysis.',
     keywords = "survival analysis deep learning cox regression tensorflow",
     url='https://github.com/liupei101/TFDeepSurv',
@@ -23,7 +23,6 @@ setup(name='TFDeepSurv',
         'tensorflow>=1.4.0',
         'scipy',
         'scikit-learn>=0.19.0',
-        'lifelines>=0.9.2',
-        'supersmoother>=0.4',
+        'lifelines>=0.9.2'
     ],
 )
