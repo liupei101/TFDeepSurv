@@ -1,7 +1,7 @@
 # TFDeepSurv
 Deep Cox proportional risk model and survival analysis implemented by tensorflow.
 
-**NOTE:** `tfdeepsurv-v2.0.0` has been released. Compared with `v1.0`, current refactored version  largely improved:
+**NOTE:** `tfdeepsurv-v2.0.0` has been released. The Old version is on branch `archive_v1`. Compared with `v1.0`, current refactored version  largely improved:
 - speed of computation graph building of model
 - loss function computation via only raw tensorflow ops.
 - unified format of survival data
