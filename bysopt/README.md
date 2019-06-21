@@ -1,6 +1,6 @@
 ## Bayesian Hyperparameters Optimization for TFDeepSurv
 
-This work is based on package [hyperopt](https://github.com/hyperopt/hyperopt), we suggest you know it before you run bayesian hyperparameters optimization for TFDeepSurv.
+Since this work is based on [hyperopt](https://github.com/hyperopt/hyperopt), we suggest you know it before you run bayesian hyperparameters optimization for TFDeepSurv.
 
 ### When is it needed?
 
@@ -14,7 +14,7 @@ How does bayesian hyperparameters optimization work?
 
 Here, we give a short introduction. See more details in [hyperopt](https://github.com/hyperopt/hyperopt)
 
-> Given that we have collected the model performance measurements (such as C-index or AUC) under the different setting of hyperparameters' value. The `hyperopt` will generate a new set of hyperparameters' value (in hyperparameter searching space) that may boost the model performance by using the collected historical information.
+> Given that we have collected the model performance measurements (such as C-Index or AUC) under the different setting of hyperparameters' value. The `hyperopt` will generate a new set of hyperparameters' value (in hyperparameter searching space) that may boost the model performance by using the collected historical information.
 
 ---
 
@@ -47,8 +47,8 @@ The network structure (of hidden layers) must be fixed. Or you can take it as hy
 ```python
 ### Network Structure ###
 # Structure of hidden layers 
-# Number of neurons in 2 hidden layers are 6, 3, respectively
-HIDDEN_LAYERS = [6, 3]
+# Number of neurons in 2 hidden layers are 6, 3, 1, respectively
+HIDDEN_LAYERS = [6, 3, 1]
 ```
 
 #### 3. Search Params

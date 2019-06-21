@@ -1,9 +1,11 @@
 """Survival datasets preview or pre-processing module.
 """
 import pandas as pd
+from sklearn.model_selection import ShuffleSplit
 
 from .vision import plot_km_survf
 from .simulator import SimulatedData
+
 
 def survival_stats(data, t_col="t", e_col="e", plot=False):
     """
@@ -112,3 +114,68 @@ def load_simulated_data(hr_ratio,
     df['e'] = raw_data['e']
     df['t'] = raw_data['t']
     return df
+
+def load_data(file_path, t_col='t', e_col='e', excluded_cols=[],
+              split_ratio=1.0, normalize=False, seed=42):
+    """
+    load csv file and return standard survival data for traning or testing.
+
+    Parameters
+    ----------
+    file_path: str
+        File path. It only supports csv file.
+    t_col: str
+        Colname of observed time in your data.
+    e_col: str
+        Colname of observed status in your data.
+    excluded_cols: list
+        Columns will not be included in the final data.
+    split_ratio: float
+        If `split_ratio` is set to 1.0, then full data will be obtained. Otherwise, the 
+        splitted data will be returned.
+    normalize: bool
+        If true, then data will be normalized by the equation x = (x - meam / std).
+    seed: int
+        Random seed for splitting data.
+
+    Returns
+    ------
+    pandas.DataFrame
+        Or tuple of two DataFrames if split_ratio is less than 1.0.
+    """
+    # Read csv data
+    data_all = pd.read_csv(filename)
+    
+    # list columns out
+    Y_cols = [t_col, e_col]
+    _not_int_x_cols = Y_cols + excluded_cols
+    X_cols = [x for x in data_all.columns if x not in _not_int_x_cols]
+
+    X = data_all[X_cols]
+    y = data_all[Y_cols]
+
+    # Normalized data
+    if normalize:
+        for col in X_cols:
+            X.loc[:, col] = (X.loc[:, col] - X.loc[:, col].mean()) / (X.loc[:, col].max() - X.loc[:, col].min())
+    
+    # Split data
+    if split_ratio == 1.0:
+        train_X, train_y = X, y
+    else:
+        sss = ShuffleSplit(n_splits=1, test_size=1 - split_ratio, random_state=seed)
+        for train_index, test_index in sss.split(X, y):
+            train_X, test_X = X.loc[train_index, :], X.loc[test_index, :]
+            train_y, test_y = y.loc[train_index, :], y.loc[test_index, :]
+
+    # print infos of training data
+    print("# rows: ", len(train_X))
+    print("# x_cols: ", len(train_X.columns))
+    print("# y_cols: ", len(train_y.columns))
+    print("X columns:", train_X.columns)
+    print("Y columns:", train_y.columns)
+
+    if split_ratio == 1.0:
+        return pd.concat([train_X, train_y], axis=1)
+    else:
+        return pd.concat([train_X, train_y], axis=1), pd.concat([test_X, test_y], axis=1)

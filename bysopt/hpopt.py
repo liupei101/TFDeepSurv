@@ -10,8 +10,8 @@ import pandas as pd
 import numpy as np
 import hyperopt as hpt
 
-from tfdeepsurv import dsl
-from tfdeepsurv import utils
+from tfdeepsurv import dsnn
+from tfdeepsurv.utils import load_data, survival_df
 
 global Logval, eval_cnt, time_start
 global train_X, train_y, validation_X, validation_y
@@ -20,6 +20,8 @@ global train_X, train_y, validation_X, validation_y
 ### Traning Dataset ###
 INPUT_FILE_DIR = "C:\\Users\\Administrator\\Desktop\\"
 INPUT_FILE_NAME = "simulated_data_train.csv"
+COL_T = 't'
+COL_E = 'e'
 SPLIT_RATIO = 0.8
 SPLIT_SEED = 42
 
@@ -30,7 +32,7 @@ HIDDEN_LAYERS = [6, 3, 1]
 MAX_EVALS = 50
 
 ### Search Space ###
-OPTIMIZER_LIST = ['sgd', 'adam', 'rms']
+OPTIMIZER_LIST = ['sgd', 'adam']
 ACTIVATION_LIST = ['relu', 'tanh']
 DECAY_LIST = [1.0, 0.9999]
 SEARCH_SPACE = {
@@ -55,7 +57,7 @@ def args_trans(args):
     params['dropout'] = args["dropout"] * 0.1 + 0.8
     return params
 
-### Output Result ###
+### Output Files ###
 OUTPUT_FILE_DIR = "C:\\Users\\Administrator\\Desktop\\"
 OUTPUT_FILE_NAME = "log_hpopt.json"
 
@@ -76,27 +78,35 @@ def train_dsl_by_vd(args):
     m = train_X.shape[1]
     params = args_trans(args)
     print("Params: ", params)
+    
     # Train network
-    ds = dsl.dsnn(
-        train_X, train_y,
-        m, HIDDEN_LAYERS, 1,
-        learning_rate=params['learning_rate'], 
-        learning_rate_decay=params['learning_rate_decay'],
-        activation=params['activation'],
-        optimizer=params['optimizer'],
-        L1_reg=params['L1_reg'], 
-        L2_reg=params['L2_reg'], 
-        dropout_keep_prob=params['dropout']
+    nn_config = {
+        "learning_rate": params['learning_rate'], 
+        "learning_rate_decay": params['learning_rate_decay'],
+        "activation": params['activation'],
+        "optimizer": params['optimizer'],
+        "L1_reg": params['L1_reg'], 
+        "L2_reg": params['L2_reg'], 
+        "dropout_keep_prob": params['dropout']
+    }
+    ds = dsnn(
+        m, HIDDEN_LAYERS,
+        nn_config
     )
-    ds.train(num_epoch=params['num_rounds'])
+    ds.build_graph()
+    ds.train(train_X, train_y, num_steps=params['num_rounds'], silent=True)
+    
     # Evaluation Network On Test Set
-    ci_train = ds.score(train_X, train_y)
-    ci_validation = ds.score(validation_X, validation_y)
+    ci_train = ds.evals(train_X, train_y)
+    ci_validation = ds.evals(validation_X, validation_y)
+    
     # Close Session of tensorflow
-    ds.close()
+    ds.close_session()
     del ds
+    
     # Append current search record
     Logval.append({'params': params, 'ci_train': ci_train, 'ci_validation': ci_validation})
+    
     # Print current search params and remaining time
     eval_cnt += 1
     estimate_time()
@@ -119,12 +129,21 @@ def main(filename):
     global Logval, eval_cnt, time_start
     global train_X, train_y, validation_X, validation_y
 
-    # load raw data
-    train_X, train_y, validation_X, validation_y = utils.load_raw_data(
+    # load data
+    train_data, validation_data = load_data(
         filename,
-        discount = SPLIT_RATIO,
-        seed = SPLIT_SEED
+        discount=SPLIT_RATIO,
+        seed=SPLIT_SEED
     )
+    # transform data
+    train_data = survival_df(train_data, t_col=COL_T, e_col=COL_E, label_col='Y')
+    validation_data = survival_df(validation_data, t_col=COL_T, e_col=COL_E, label_col='Y')
+    # get x and labels
+    train_X = train_data[list(train_data.columns)[:-1]]
+    train_y = train_data[['Y']]
+    validation_X = validation_data[list(validation_data.columns)[:-1]]
+    validation_y = validation_data[['Y']]
+
     # assign values for global variables
     Logval = []
     eval_cnt = 0
@@ -132,8 +151,10 @@ def main(filename):
 
     print("No. of Samples for Searching Params: ", len(train_X))
     print("Hidden Layers of Network: ", HIDDEN_LAYERS)
+    
     # start searching params
     search_params(max_evals = MAX_EVALS)
 
 if __name__ == "__main__":
     main(INPUT_FILE_DIR + INPUT_FILE_NAME)
+    

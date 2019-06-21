@@ -170,7 +170,8 @@ class dsnn(object):
         self.sess.close()
         print("Current session closed.")
 
-    def train(self, data_X, data_y, num_steps, num_skip_steps, load_model="", save_model="", plot=False):
+    def train(self, data_X, data_y, num_steps, num_skip_steps=1, 
+              load_model="", save_model="", plot=False, silent=False):
         """
         Training DeepCox model.
 
@@ -190,6 +191,8 @@ class dsnn(object):
             Path for saving model.
         plot: boolean
             Plot the learning curve.
+        silent: boolean
+            Print infos to screen.
         """
         # dataset pre-processing
         self.indices, self.train_data_X, self.train_data_y = _prepare_surv_data(data_X, data_y)
@@ -220,7 +223,8 @@ class dsnn(object):
             watch_list['metrics'].append(concordance_index(self.train_data_y.values, y_hat))
             total_loss += loss_value
             if (index + 1) % num_skip_steps == 0:
-                print('Average loss at step {}: {:.5f}'.format(index + 1, total_loss / num_skip_steps))
+                if (not silent):
+                    print('Average loss at step {}: {:.5f}'.format(index + 1, total_loss / num_skip_steps))
                 total_loss = 0.0
 
         # we only save the final trained model
