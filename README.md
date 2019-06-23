@@ -21,7 +21,7 @@ The project is based on the research of Breast Cancer.
 ## 3. Installation
 ### From source
 
-Download TFDeepSurv package and install from the directory (**Python version : 3.x**):
+Download TFDeepSurv package and install from the directory (**Python version >= 3.5**):
 ```bash
 git clone https://github.com/liupei101/TFDeepSurv.git
 cd TFDeepSurv
@@ -142,13 +142,13 @@ watch_list = model.train(
 
 result :
 ```
-Average loss at step 100: 6.29702
-Average loss at step 200: 6.29701
-Average loss at step 300: 6.29700
+Average loss at step 100: 7.07983
+Average loss at step 200: 7.07982
+Average loss at step 300: 7.07981
 ...
-Average loss at step 1700: 5.99277
-Average loss at step 1800: 5.98749
-Average loss at step 1900: 5.98466
+Average loss at step 1700: 6.29165
+Average loss at step 1800: 6.29007
+Average loss at step 1900: 6.28687
 ```
 Curve of loss and CI:
 
@@ -164,8 +164,8 @@ print("CI on test data:", model.evals(surv_test[X_cols], surv_test[Y_col]))
 
 result :
 ```txt
-CI on training data: 0.8070749683759434
-CI on test data: 0.8098841802686211
+CI on training data: 0.8193206851448683
+CI on test data: 0.8175830825866967
 ```
 
 #### 4.1.7 Model prediction
@@ -176,25 +176,29 @@ Model prediction includes:
 
 ```python
 # predict log hazard ratio
-print(model.predict(surv_test.loc[0:10, X_cols]))
+print(model.predict(surv_test.loc[0:4, X_cols]))
 # predict hazard ratio
-print(model.predict(surv_test.loc[0:10, X_cols], output_margin=False))
+print(model.predict(surv_test.loc[0:4, X_cols], output_margin=False))
 
 ```
 result:
 ```txt
-[[1.3238575]
- ...
- [1.0372685]]
+[[4.629786 ]
+ [4.8222055]
+ [0.       ]
+ [1.4019105]
+ [0.       ]]
 
-[[ 3.7578897]
- ...
- [ 2.8214996]]
+[[102.49213 ]
+ [124.2388  ]
+ [  1.      ]
+ [  4.062955]
+ [  1.      ]]
 ```
 
 ```python
 # predict survival function
-model.predict_survival_function(surv_test.loc[0:5, X_cols], plot=True)
+model.predict_survival_function(surv_test.loc[0:4, X_cols], plot=True)
 ```
 result:
 

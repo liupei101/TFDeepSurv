@@ -239,8 +239,8 @@ class dsnn(object):
             saver.save(self.sess, save_model)
         # plot learning curve
         if plot:
-            plot_train_curve(watch_list['loss'], "Loss function")
-            plot_train_curve(watch_list['metrics'], "Concordance index")
+            plot_train_curve(watch_list['loss'], title="Loss function")
+            plot_train_curve(watch_list['metrics'], title="Concordance index")
 
         # update the baseline survival function after all training ops
         self.HR = self.predict(self.train_data_X, output_margin=False)
