@@ -64,8 +64,8 @@ def _prepare_surv_data(surv_data_X, surv_data_y):
     must be sorted by observed time (DESC).
     """
     _check_surv_data(surv_data_X, surv_data_y)
-    # sort by T desc
-    T = np.abs(np.squeeze(np.array(surv_data_y)))
+    # sort by T DESC
+    T = - np.abs(np.squeeze(np.array(surv_data_y)))
     sorted_idx = np.argsort(T)
     return sorted_idx, surv_data_X.iloc[sorted_idx, :], surv_data_y.iloc[sorted_idx, :]
 

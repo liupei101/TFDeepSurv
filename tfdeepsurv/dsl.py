@@ -4,7 +4,7 @@ import numpy as np
 import tensorflow as tf
 
 from .utils import _check_config
-from .utils import _check_surv_data 
+from .utils import _check_surv_data
 from .utils import _prepare_surv_data
 from .utils import concordance_index
 from .utils import baseline_survival_function
@@ -179,7 +179,7 @@ class dsnn(object):
         ----------
         data_X, data_y: DataFrame
             Covariates and labels of survival data. It's suggested that you utilize 
-            `libsurv.datasets.survival_df` to obtain the DataFrame object.
+            `tfdeepsurv.datasets.survival_df` to obtain the DataFrame object.
         num_steps: int
             The number of training steps.
         num_skip_steps: int
@@ -193,6 +193,11 @@ class dsnn(object):
             Plot the learning curve.
         silent: boolean
             Print infos to screen.
+
+        Returns
+        -------
+        dict
+            Values of C-index and loss function during training.
         """
         # dataset pre-processing
         self.indices, self.train_data_X, self.train_data_y = _prepare_surv_data(data_X, data_y)
@@ -220,7 +225,7 @@ class dsnn(object):
             y_hat, loss_value, _ = self.sess.run([self.Y_hat, self.loss, self.optimizer], feed_dict=feed_data)
             # append values
             watch_list['loss'].append(loss_value)
-            watch_list['metrics'].append(concordance_index(self.train_data_y.values, y_hat))
+            watch_list['metrics'].append(concordance_index(self.train_data_y.values, -y_hat))
             total_loss += loss_value
             if (index + 1) % num_skip_steps == 0:
                 if (not silent):
@@ -282,15 +287,19 @@ class dsnn(object):
         ----------
         data_X, data_y: DataFrame
             Covariates and labels of survival data. It's suggested that you utilize 
-            `libsurv.datasets.survival_df` to obtain the DataFrame object.
+            `tfdeepsurv.datasets.survival_df` to obtain the DataFrame object.
 
         Returns
         -------
         float
             CI metrics on your dataset.
+
+        Notes
+        -----
+        We use negtive hazard ratio as the score. See https://stats.stackexchange.com/questions/352183/use-median-survival-time-to-calculate-cph-c-statistic/352435#352435
         """
         _check_surv_data(data_X, data_y)
-        preds = self.predict(data_X)
+        preds = - self.predict(data_X)
         return concordance_index(data_y.values, preds)
 
     def predict_survival_function(self, X, plot=False):
