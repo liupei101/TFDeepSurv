@@ -1,22 +1,25 @@
 # TFDeepSurv
 Deep Cox proportional risk model and survival analysis implemented by tensorflow.
 
-**NOTE:** [tfdeepsurv-v2.0.0](https://github.com/liupei101/TFDeepSurv/releases) has been released. The Old version is on branch `archive_v1`. Compared with `v1.0`, current refactored version  largely improved:
-- speed of computation graph building of model
-- loss function computation via only raw tensorflow ops.
+**NOTE:** [tfdeepsurv-v2.0.0](https://github.com/liupei101/TFDeepSurv/releases) has been released. The old version is on branch `archive_v1`. Compared with version `v1.0`, current version largely improved:
+- speed on building computation graph
+- utilizing raw tensorflow ops to compute loss function
 - unified format of survival data
 - code elegance and simplicity
 
 ## 1. Differences from DeepSurv
 [DeepSurv](https://github.com/jaredleekatzman/DeepSurv), a package of Deep Cox proportional risk model, is open-source on Github. But our works may shine in:
 
-- Supporting ties of death time in your survival data, which means different loss function and estimator for survival function (`Breslow` approximation).
+- Supporting ties of death time in your survival data, which means different loss function and estimator of survival function (`Breslow` approximation).
 - Providing survival function estimation.
 - Tuning hyperparameters of DNN using scientific method - Bayesian Hyperparameters Optimization.
 - Implementing by the popular deep learning framework - tensorflow
 
-## 2. Statement
-The project is based on the research of Breast Cancer.
+## 2. TODO List
+Points needed to do in future version `v2.1.0`:
+- requirements statement
+- dockerfile and docker images of tfdeepsurv
+- Github packge tools
 
 ## 3. Installation
 ### From source
