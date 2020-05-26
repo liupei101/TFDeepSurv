@@ -236,8 +236,4 @@ update at any time.
 
 **Q2.** My loss function curve could not converge, why?
 
-> First of all, you can refer to [Notebook - tfdeepsurv_data_real.ipynb](examples/tfdeepsurv_data_real.ipynb) to understand the modeling procedure. Then, you can check the following items one by one:
-1. Whether your suvival data satisfies the requirement. Your original data must include covariates, time and event. And then it must be transformed as introduced in [Notebook - tfdeepsurv_data_real.ipynb](examples/tfdeepsurv_data_real.ipynb).
-2. Data normalization. The covariates should be normalized to the same magnitude if you want to get a quick convergence.
-3. Learning rate setting. It is better to set a relatively lower learning rate, such as 0.01.
-
+> First of all, you can refer to [Notebook - tfdeepsurv_data_real.ipynb](examples/tfdeepsurv_data_real.ipynb) to understand the modeling procedure. Then, you can check the following items one by one: [1]. Whether your suvival data satisfies the requirement. Your original data must include covariates, time and event. And then it must be transformed as introduced in [Notebook - tfdeepsurv_data_real.ipynb](examples/tfdeepsurv_data_real.ipynb). [2]. Data normalization. The covariates should be normalized to the same magnitude if you want to get a quick convergence. [3]. Learning rate setting. It is better to set a relatively lower learning rate, such as 0.01.
