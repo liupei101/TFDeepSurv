@@ -1,4 +1,4 @@
-"""Survival datasets preview or pre-processing module.
+"""Survival dataset preview or pre-processing functionality.
 """
 import pandas as pd
 from sklearn.model_selection import ShuffleSplit
@@ -9,18 +9,18 @@ from .simulator import SimulatedData
 
 def survival_stats(data, t_col="t", e_col="e", plot=False):
     """
-    Print statistics of survival data to stdout.
+    Print statistics of survival data.
 
     Parameters
     ----------
     data: pandas.DataFrame
-        Survival data to watch.
+        Survival data you specified.
     t_col: str
-        Column name in data indicating time.
+        Column name of data indicating time.
     e_col: str
-        Column name in data indicating events or status.
+        Column name of data indicating events or status.
     plot: boolean
-        Is plot surival curve.
+        Whether plot survival curve.
     """
     print("--------------- Survival Data Statistics ---------------")
     N = len(data)
@@ -31,11 +31,11 @@ def survival_stats(data, t_col="t", e_col="e", plot=False):
     print("# Max Time:", data[t_col].max())
     print("")
     if plot:
-        plot_km_survf(data, t_col="t", e_col="e")
+        plot_km_survf(data, t_col=t_col, e_col=e_col)
 
 def survival_df(data, t_col="t", e_col="e", label_col="Y", exclude_col=[]):
     """
-    Transform raw dataframe to survival dataframe that could be used in model 
+    Transform original DataFrame to survival dataframe that would be used in model 
     training or predicting.
 
     Parameters
@@ -43,9 +43,9 @@ def survival_df(data, t_col="t", e_col="e", label_col="Y", exclude_col=[]):
     data: DataFrame
         Survival data to be transformed.
     t_col: str
-        Column name in data indicating time.
+        Column name of data indicating time.
     e_col: str
-        Column name in data indicating events or status.
+        Column name of data indicating events or status.
     label_col: str
         Name of new label in transformed survival data.
     exclude_col: list
@@ -54,11 +54,11 @@ def survival_df(data, t_col="t", e_col="e", label_col="Y", exclude_col=[]):
     Returns
     -------
     DataFrame:
-        Transformed survival data. Negtive values in label are considered right censored.
+        Transformed survival data. Negtive values in label are taken as right censored.
     """
     x_cols = [c for c in data.columns if c not in [t_col, e_col] + exclude_col]
 
-    # Negtive values are considered right censored
+    # Negtive values are taken as right censored
     data.loc[:, label_col] = data.loc[:, t_col]
     data.loc[data[e_col] == 0, label_col] = - data.loc[data[e_col] == 0, label_col]
 
@@ -109,32 +109,34 @@ def load_simulated_data(hr_ratio,
     generator = SimulatedData(hr_ratio, average_death=average_death, end_time=end_time, 
                               num_features=num_features, num_var=num_var)
     raw_data = generator.generate_data(N, method=method, gaussian_config=gaussian_config, seed=seed)
-    # To DataFrame
+    
+    # Transform to DataFrame
     df = pd.DataFrame(raw_data['x'], columns=['x_' + str(i) for i in range(num_features)])
     df['e'] = raw_data['e']
     df['t'] = raw_data['t']
+    
     return df
 
 def load_data(file_path, t_col='t', e_col='e', excluded_cols=[],
               split_ratio=1.0, normalize=False, seed=42):
     """
-    load csv file and return standard survival data for traning or testing.
+    load csv file and return a standard survival data for traning or testing.
 
     Parameters
     ----------
     file_path: str
-        File path. It only supports csv file.
+        File path. Only support for csv file.
     t_col: str
-        Colname of observed time in your data.
+        Column name of observed time in your data.
     e_col: str
-        Colname of observed status in your data.
+        Column name of observed status in your data.
     excluded_cols: list
         Columns will not be included in the final data.
     split_ratio: float
         If `split_ratio` is set to 1.0, then full data will be obtained. Otherwise, the 
         splitted data will be returned.
     normalize: bool
-        If true, then data will be normalized by the equation x = (x - meam / std).
+        If true, then data will be normalized by Min-Max scale.
     seed: int
         Random seed for splitting data.
 
@@ -144,7 +146,7 @@ def load_data(file_path, t_col='t', e_col='e', excluded_cols=[],
         Or tuple of two DataFrames if split_ratio is less than 1.0.
     """
     # Read csv data
-    data_all = pd.read_csv(filename)
+    data_all = pd.read_csv(file_path)
     
     # list columns out
     Y_cols = [t_col, e_col]
@@ -157,25 +159,17 @@ def load_data(file_path, t_col='t', e_col='e', excluded_cols=[],
     # Normalized data
     if normalize:
         for col in X_cols:
-            X.loc[:, col] = (X.loc[:, col] - X.loc[:, col].mean()) / (X.loc[:, col].max() - X.loc[:, col].min())
+            X[col + "_norm"] = (X[col] - X[col].mean()) / (X[col].max() - X[col].min())
+        X.drop(columns=X_cols, inplace=True)
     
     # Split data
     if split_ratio == 1.0:
         train_X, train_y = X, y
+        return pd.concat([train_X, train_y], axis=1)
     else:
         sss = ShuffleSplit(n_splits=1, test_size=1 - split_ratio, random_state=seed)
         for train_index, test_index in sss.split(X, y):
             train_X, test_X = X.loc[train_index, :], X.loc[test_index, :]
             train_y, test_y = y.loc[train_index, :], y.loc[test_index, :]
 
-    # print infos of training data
-    print("# rows: ", len(train_X))
-    print("# x_cols: ", len(train_X.columns))
-    print("# y_cols: ", len(train_y.columns))
-    print("X columns:", train_X.columns)
-    print("Y columns:", train_y.columns)
-
-    if split_ratio == 1.0:
-        return pd.concat([train_X, train_y], axis=1)
-    else:
         return pd.concat([train_X, train_y], axis=1), pd.concat([test_X, test_y], axis=1)

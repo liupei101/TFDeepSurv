@@ -3,6 +3,20 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from lifelines.utils import concordance_index as ci
 
+def _check_input_dimension(dim_nodes, dim_data):
+    """
+    Check the value of input_nodes and the dimension of data_X. 
+
+    Parameters
+    ----------
+    dim_nodes: int
+        the value of input_nodes.
+    dim_data: int
+        the dimension of data_X.
+    """
+    if dim_nodes != dim_data:
+        raise ValueError("The value of input nodes must be equal to the number of features.")
+
 def _check_config(config):
     """
     Check configuration and complete it with default_config.

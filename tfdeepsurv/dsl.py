@@ -4,6 +4,7 @@ import numpy as np
 import tensorflow as tf
 
 from .utils import _check_config
+from .utils import _check_input_dimension
 from .utils import _check_surv_data
 from .utils import _prepare_surv_data
 from .utils import concordance_index
@@ -37,39 +38,45 @@ class dsnn(object):
             }
         """
         super(dsnn, self).__init__()
+
         # neural nodes
         self.input_nodes = input_nodes
         self.hidden_layers_nodes = hidden_layers_nodes
         assert hidden_layers_nodes[-1] == 1
+
         # network hyper-parameters
         _check_config(config)
         self.config = config
+
+        # reset computational graph
+        tf.compat.v1.reset_default_graph()
         # graph level random seed
-        tf.set_random_seed(config["seed"])
+        tf.compat.v1.set_random_seed(config["seed"])
+        
         # some gobal settings
-        self.global_step = tf.get_variable('global_step', initializer=tf.constant(0), trainable=False)
-        self.keep_prob = tf.placeholder(tf.float32)
+        self.global_step = tf.compat.v1.get_variable('global_step', initializer=tf.constant(0), trainable=False)
+        self.keep_prob = tf.compat.v1.placeholder(tf.float32)
         
         # It's the best way to use `tf.placeholder` instead of `tf.data.Dataset`.
         # Since style of `batch` is not appropriate in survival analysis.
-        self.X = tf.placeholder(tf.float32, [None, input_nodes], name='X-Input')
-        self.Y = tf.placeholder(tf.float32, [None, 1], name='Y-Input')
+        self.X = tf.compat.v1.placeholder(tf.float32, [None, input_nodes], name='X-Input')
+        self.Y = tf.compat.v1.placeholder(tf.float32, [None, 1], name='Y-Input')
 
     def _create_fc_layer(self, x, output_dim, scope):
-        with tf.variable_scope(scope, reuse=tf.AUTO_REUSE):
-            w = tf.get_variable('weights', [x.shape[1], output_dim], 
+        with tf.compat.v1.variable_scope(scope, reuse=tf.compat.v1.AUTO_REUSE):
+            w = tf.compat.v1.get_variable('weights', [x.shape[1], output_dim], 
                 initializer=tf.truncated_normal_initializer(stddev=0.1)
             )
 
-            b = tf.get_variable('biases', [output_dim], 
+            b = tf.compat.v1.get_variable('biases', [output_dim], 
                 initializer=tf.constant_initializer(0.0)
             )
 
             # add weights and bias to collections
-            tf.add_to_collection("var_weight", w)
-            tf.add_to_collection("var_bias", b)
+            tf.compat.v1.add_to_collection("var_weight", w)
+            tf.compat.v1.add_to_collection("var_bias", b)
 
-            layer_out = tf.nn.dropout(tf.matmul(x, w) + b, self.keep_prob)
+            layer_out = tf.nn.dropout(tf.matmul(x, w) + b, rate=1.0-self.keep_prob)
 
             if self.config['activation'] == 'relu':
                 layer_out = tf.nn.relu(layer_out)
@@ -113,16 +120,16 @@ class dsnn(object):
             Obs = tf.reduce_sum(Y_label_E)
 
             Y_hat_hr = tf.exp(Y_hat_c)
-            Y_hat_cumsum = tf.log(tf.cumsum(Y_hat_hr))
+            Y_hat_cumsum = tf.math.log(tf.cumsum(Y_hat_hr))
             
             # Start Computation of Loss function
 
             # Get Segment from T
             unique_values, segment_ids = tf.unique(Y_label_T)
             # Get Segment_max
-            loss_s2_v = tf.segment_max(Y_hat_cumsum, segment_ids)
+            loss_s2_v = tf.math.segment_max(Y_hat_cumsum, segment_ids)
             # Get Segment_count
-            loss_s2_count = tf.segment_sum(Y_label_E, segment_ids)
+            loss_s2_count = tf.math.segment_sum(Y_label_E, segment_ids)
             # Compute S2
             loss_s2 = tf.reduce_sum(tf.multiply(loss_s2_v, loss_s2_count))
             # Compute S1
@@ -132,7 +139,7 @@ class dsnn(object):
 
             # Compute Regularization Term Loss
             reg_item = tf.contrib.layers.l1_l2_regularizer(self.config["L1_reg"], self.config["L2_reg"])
-            loss_reg = tf.contrib.layers.apply_regularization(reg_item, tf.get_collection("var_weight"))
+            loss_reg = tf.contrib.layers.apply_regularization(reg_item, tf.compat.v1.get_collection("var_weight"))
 
             # Loss function = Breslow Function + Regularization Term
             self.loss = tf.add(loss_breslow, loss_reg)
@@ -143,18 +150,18 @@ class dsnn(object):
         """
         # SGD Optimizer
         if self.config["optimizer"] == 'sgd':
-            lr = tf.train.exponential_decay(
+            lr = tf.compat.v1.train.exponential_decay(
                 self.config["learning_rate"],
                 self.global_step,
                 1,
                 self.config["learning_rate_decay"]
             )
-            self.optimizer = tf.train.GradientDescentOptimizer(lr).minimize(self.loss, global_step=self.global_step)
+            self.optimizer = tf.compat.v1.train.GradientDescentOptimizer(lr).minimize(self.loss, global_step=self.global_step)
         # Adam Optimizer
         elif self.config["optimizer"] == 'adam':
-            self.optimizer = tf.train.AdamOptimizer(self.config["learning_rate"]).minimize(self.loss, global_step=self.global_step)
+            self.optimizer = tf.compat.v1.train.AdamOptimizer(self.config["learning_rate"]).minimize(self.loss, global_step=self.global_step)
         elif self.config["optimizer"] == 'rms':
-            self.optimizer = tf.train.RMSPropOptimizer(self.config["learning_rate"]).minimize(self.loss, global_step=self.global_step)     
+            self.optimizer = tf.compat.v1.train.RMSPropOptimizer(self.config["learning_rate"]).minimize(self.loss, global_step=self.global_step)     
         else:
             raise NotImplementedError('Optimizer not recognized')
 
@@ -164,7 +171,7 @@ class dsnn(object):
         self._create_network()
         self._create_loss()
         self._create_optimizer()
-        self.sess = tf.Session()
+        self.sess = tf.compat.v1.Session()
 
     def close_session(self):
         self.sess.close()
@@ -199,6 +206,9 @@ class dsnn(object):
         dict
             Values of C-index and loss function during training.
         """
+        # check dimension
+        _check_input_dimension(self.input_nodes, data_X.shape[1])
+
         # dataset pre-processing
         self.indices, self.train_data_X, self.train_data_y = _prepare_surv_data(data_X, data_y)
 
@@ -210,7 +220,7 @@ class dsnn(object):
         }
 
         # Session Running
-        self.sess.run(tf.global_variables_initializer())
+        self.sess.run(tf.compat.v1.global_variables_initializer())
         if load_model != "":
             saver = tf.train.Saver()
             saver.restore(self.sess, load_model)

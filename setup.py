@@ -32,7 +32,7 @@ setup(name=pkg_name,
     packages = find_packages(),
     python_requires=">=3.5",
     install_requires=[
-        'tensorflow>=1.10.0, <2.0.0',
+        'tensorflow>=1.14.0, <2.0.0',
         'pandas>=0.24.2',
         'numpy>=1.14.5',
         'matplotlib>=3.0.3',
