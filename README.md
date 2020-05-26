@@ -1,18 +1,22 @@
 # TFDeepSurv
 Deep Cox proportional risk model and survival analysis implemented by tensorflow.
 
-**NOTE:** [tfdeepsurv-v2.0.0](https://github.com/liupei101/TFDeepSurv/releases) has been released. The old version is on branch `archive_v1`. Compared with version `v1.0`, current version largely improved:
-- speed on building computation graph
-- utilizing raw tensorflow ops to compute loss function
+The suggested TensorFlow version is 1.15.3. And module testing was passed under TensorFlow-1.15.3.
+
+**NOTE:** [tfdeepsurv-v2.1.0](https://github.com/liupei101/TFDeepSurv/releases) has been released. The old version is on branch `archive_v1`. Compared with version `v1.0`, current version largely improved:
+- speed on building computational graph
+- utilizing raw tensorflow ops to compute loss function (for handling ties)
 - unified format of survival data
 - code elegance and simplicity
+
+Read FAQ below firstly if you have problems or directly send an email to me.
 
 ## 1. Differences from DeepSurv
 [DeepSurv](https://github.com/jaredleekatzman/DeepSurv), a package of Deep Cox proportional risk model, is open-source on Github. But our works may shine in:
 
 - Supporting ties of death time in your survival data, which means different loss function and estimator of survival function (`Breslow` approximation).
 - Providing survival function estimation.
-- Tuning hyperparameters of DNN using scientific method - Bayesian Hyperparameters Optimization.
+- Tuning hyperparameters of DNN using a scientific method - Bayesian Hyperparameters Optimization.
 - Implementing by the popular deep learning framework - tensorflow
 
 ## 2. TODO List
@@ -85,9 +89,14 @@ survival_stats(train_data, t_col="t", e_col="e", plot=False)
 
 #### 4.1.3 transfrom survival data
 
-The transformed survival data contains an new label. Negtive values are considered as right censored, and positive values are considered as event occurrence.
+The transformed survival data includes the existing covariates and a new label column. In the new label column, a negative value indicates that this one is a right-censored sample, and a positive value indicates an event occurrence. The new label column 'Y' is simply generated from the time and event columns according to the below equation. 
 
-**NOTE**: In version 2.0, survival data must be transformed via `tfdeepsurv.datasets.survival_df`.
+```
+Y =  time, if event = 1
+Y = -time, if event = 0
+```
+
+**NOTE**: In the latest version 2.1, survival data must be transformed via `tfdeepsurv.datasets.survival_df`.
 
 ```python
 from tfdeepsurv.datasets import survival_df
@@ -216,3 +225,19 @@ More details can refer to [Notebook - tfdeepsurv_data_real.ipynb](examples/tfdee
 We provide tools for hyperparameters tuning (Bayesian Hyperparameters Optimization) in deep neural network, which is automatic in searching optimal hyperparameters of DNN.
 
 For more usage of Bayesian Hyperparameters Optimization, you can refer to [here](bysopt/README.md)
+
+## FAQ
+
+update at any time.
+
+**Q1.** How to install this package ?
+
+> You can download or clone the latest package, and then install it using pip tools. TensorFlow would be installed as well. The version of TensorFlow requires `>=1.14.0, <2.0.0` as specified in `setup.py`.
+
+**Q2.** My loss function curve could not converge, why?
+
+> First of all, you can refer to [Notebook - tfdeepsurv_data_real.ipynb](examples/tfdeepsurv_data_real.ipynb) to understand the modeling procedure. Then, you can check the following items one by one:
+1. Whether your suvival data satisfies the requirement. Your original data must include covariates, time and event. And then it must be transformed as introduced in [Notebook - tfdeepsurv_data_real.ipynb](examples/tfdeepsurv_data_real.ipynb).
+2. Data normalization. The covariates should be normalized to the same magnitude if you want to get a quick convergence.
+3. Learning rate setting. It is better to set a relatively lower learning rate, such as 0.01.
+
