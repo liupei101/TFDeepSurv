@@ -26,7 +26,7 @@ def survival_stats(data, t_col="t", e_col="e", plot=False):
     N = len(data)
     print("# Rows:", N)
     print("# Columns: %d + %s + %s" % (len(data.columns) - 2, e_col, t_col))
-    print("# Events Ratio: %.2f%%" % (1.0 * data[e_col].sum() / N))
+    print("# Event Percentage: %.2f%%" % (100.0 * data[e_col].sum() / N))
     print("# Min Time:", data[t_col].min())
     print("# Max Time:", data[t_col].max())
     print("")

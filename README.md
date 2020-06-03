@@ -69,23 +69,12 @@ result :
 --------------- Survival Data Statistics ---------------
 # Rows: 2000
 # Columns: 10 + e + t
-# Events Ratio: 0.74%
+# Event Percentage: 74.00%
 # Min Time: 0.0001404392
 # Max Time: 15.0
 ```
 
 ![](tools/README-survival-status.png)
-
-```python
-survival_stats(train_data, t_col="t", e_col="e", plot=False)
-
-#--------------- Survival Data Statistics ---------------
-# Rows: 2000
-# Columns: 10 + e + t
-# Events Ratio: 0.74%
-# Min Time: 0.0001404392
-# Max Time: 15.0
-```
 
 #### 4.1.3 transfrom survival data
 
@@ -111,7 +100,7 @@ surv_test = survival_df(test_data, t_col="t", e_col="e", label_col="Y")
 ```python
 from tfdeepsurv import dsnn
 
-input_nodes = 10
+input_nodes = len(surv_train.columns) - 1
 hidden_layers_nodes = [6, 3, 1]
 
 # the arguments of dsnn can be obtained by Bayesian Hyperparameters Tuning
@@ -225,6 +214,13 @@ More details can refer to [Notebook - tfdeepsurv_data_real.ipynb](examples/tfdee
 We provide tools for hyperparameters tuning (Bayesian Hyperparameters Optimization) in deep neural network, which is automatic in searching optimal hyperparameters of DNN.
 
 For more usage of Bayesian Hyperparameters Optimization, you can refer to [here](bysopt/README.md)
+
+## 6. Contributors
+
+Special thanks to those who contributed or gave helpful suggestions (Github account or nickname instead):
+- [rmaanyam](https://github.com/rmaanyam)
+- [yiyansong](https://github.com/yiyansong)
+- Fabrice Pang
 
 ## FAQ
 
