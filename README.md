@@ -19,11 +19,13 @@ Read FAQ below firstly if you have problems or directly send an email to me.
 - Tuning hyperparameters of DNN using a scientific method - Bayesian Hyperparameters Optimization.
 - Implementing by the popular deep learning framework - tensorflow
 
-## 2. TODO List
-Points needed to do in future version `v2.1.0`:
-- requirements statement
-- dockerfile and docker images of tfdeepsurv
-- Github packge tools
+## 2. Contributors
+
+Special thanks to those who contributed or gave helpful suggestions (Github account or nickname instead):
+- [rmaanyam](https://github.com/rmaanyam)
+- [yiyansong](https://github.com/yiyansong)
+- H. Quan
+- F. Pang
 
 ## 3. Installation
 ### From source
@@ -155,7 +157,7 @@ Curve of loss and CI:
 
 Loss Value                       | CI
 :-------------------------------:|:--------------------------------------:
-![](tools/README-loss.png)|![](tools/README-ci.png)
+![loss curve](tools/README-loss.png)|![ci curve](tools/README-ci.png)
 
 #### 4.1.6 evaluate model performance
 ```python
@@ -215,13 +217,11 @@ We provide tools for hyperparameters tuning (Bayesian Hyperparameters Optimizati
 
 For more usage of Bayesian Hyperparameters Optimization, you can refer to [here](bysopt/README.md)
 
-## 6. Contributors
-
-Special thanks to those who contributed or gave helpful suggestions (Github account or nickname instead):
-- [rmaanyam](https://github.com/rmaanyam)
-- [yiyansong](https://github.com/yiyansong)
-- Hao Quan
-- Fabrice Pang
+## 6. TODO List
+Points needed to do in future version `v2.1.0`:
+- requirements statement
+- dockerfile and docker images of tfdeepsurv
+- Github packge tools
 
 ## FAQ
 
