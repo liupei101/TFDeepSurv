@@ -220,6 +220,7 @@ For more usage of Bayesian Hyperparameters Optimization, you can refer to [here]
 Special thanks to those who contributed or gave helpful suggestions (Github account or nickname instead):
 - [rmaanyam](https://github.com/rmaanyam)
 - [yiyansong](https://github.com/yiyansong)
+- Hao Quan
 - Fabrice Pang
 
 ## FAQ
