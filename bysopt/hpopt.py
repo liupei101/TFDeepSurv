@@ -11,27 +11,32 @@ import numpy as np
 import hyperopt as hpt
 
 from tfdeepsurv import dsnn
-from tfdeepsurv.utils import load_data, survival_df
+from tfdeepsurv.datasets import load_data, survival_df
 
-global Logval, eval_cnt, time_start
+global Logval, eval_cnt
 global train_X, train_y, validation_X, validation_y
 
-#############  Configuration for Hyperparams Tuning ###############
-### Traning Dataset ###
-INPUT_FILE_DIR = "C:\\Users\\Administrator\\Desktop\\"
-INPUT_FILE_NAME = "simulated_data_train.csv"
-COL_T = 't'
-COL_E = 'e'
-SPLIT_RATIO = 0.8
-SPLIT_SEED = 42
+# ignore warning messages from tensorflow
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
-### Network Structure ###
-HIDDEN_LAYERS = [6, 3, 1]
+#############  Start Configuration for Hyperparams Tuning ###############
 
-### Search Times ###
-MAX_EVALS = 50
+### 1. Dataset ###
+WORK_DIR = "E:\\My library\\TFDeepSurv\\bysopt"
+DATA_PATH = "simulated_data_train.csv"
+COLUMN_T = 't'
+COLUMN_E = 'e'
+IS_NORM = False # data normalization
+SPLIT_RATIO = 0.8 # data split for validation
+SPLIT_SEED = 42 # random seed
 
-### Search Space ###
+### 2. Model ###
+HIDDEN_LAYERS = [7, 3, 1]
+
+### 3. Search ###
+MAX_EVALS = 50 # the number of searching or iteration
+
+### 4. Hyperparams Space ###
 OPTIMIZER_LIST = ['sgd', 'adam']
 ACTIVATION_LIST = ['relu', 'tanh']
 DECAY_LIST = [1.0, 0.9999]
@@ -45,6 +50,7 @@ SEARCH_SPACE = {
     "L2_reg": hpt.hp.uniform('L2_reg', 0.0, 0.001), # [0.000, 0.001]
     "dropout": hpt.hp.randint("dropout", 3)# [0.8, 1.0] = 0.1 * ([0, 2] + 8)
 }
+# function for transforming values of hyperparams to a specified range
 def args_trans(args):
     params = {}
     params["num_rounds"] = args["num_rounds"] * 100 + 1500
@@ -57,29 +63,22 @@ def args_trans(args):
     params['dropout'] = args["dropout"] * 0.1 + 0.8
     return params
 
-### Output Files ###
-OUTPUT_FILE_DIR = "C:\\Users\\Administrator\\Desktop\\"
-OUTPUT_FILE_NAME = "log_hpopt.json"
+### 5. Output ###
+OUTPUT_DIR = "E:\\My library\\TFDeepSurv\\bysopt"
+OUTPUT_FILEPATH = "log_hpopt.json"
 
-###################################################################
+#############  End Configuration for Hyperparams Tuning ###############
 
-def estimate_time():
-    time_now = time.clock()
-    total = (time_now - time_start) / eval_cnt * (MAX_EVALS - eval_cnt)
-    th = int(total / 3600)
-    tm = int((total - th * 3600) / 60)
-    ts = int(total - th * 3600 - tm * 60)
-    print('Estimate the remaining time: %dh %dm %ds' % (th, tm, ts))
 
-# Train and validation on TFDeepSurv
+# Training TFDeepSurv model by cross-validation
 def train_dsl_by_vd(args):
     global Logval, eval_cnt
-    # Params transformation
+
+    # transform parameters
     m = train_X.shape[1]
     params = args_trans(args)
-    print("Params: ", params)
     
-    # Train network
+    # train model
     nn_config = {
         "learning_rate": params['learning_rate'], 
         "learning_rate_decay": params['learning_rate_decay'],
@@ -96,65 +95,71 @@ def train_dsl_by_vd(args):
     ds.build_graph()
     ds.train(train_X, train_y, num_steps=params['num_rounds'], silent=True)
     
-    # Evaluation Network On Test Set
+    # evaluate model on validation set
     ci_train = ds.evals(train_X, train_y)
     ci_validation = ds.evals(validation_X, validation_y)
     
-    # Close Session of tensorflow
+    # close session of tensorflow
     ds.close_session()
     del ds
     
-    # Append current search record
+    # append current search record
     Logval.append({'params': params, 'ci_train': ci_train, 'ci_validation': ci_validation})
     
-    # Print current search params and remaining time
+    # print current search params and remaining time
     eval_cnt += 1
-    estimate_time()
-    print(">>> CI on train=%g | CI on validation=%g" % (ci_train, ci_validation))
+    print("[info] After %d-th searching: CI on train=%g | CI on validation=%g" % (eval_cnt, ci_train, ci_validation))
 
     return -ci_validation
 
 def search_params(max_evals=100):
-    # Hyopt
+    # running hyperparams tuning
     space = SEARCH_SPACE
     best = hpt.fmin(train_dsl_by_vd, space, algo=hpt.tpe.suggest, max_evals=max_evals)
-    # Output result
-    with open(OUTPUT_FILE_DIR + OUTPUT_FILE_NAME, 'w') as f:
+    
+    # write searching records
+    with open(os.path.join(OUTPUT_DIR, OUTPUT_FILEPATH), 'w') as f:
         json.dump(Logval, f)
-    # Print Optimal search result
-    print("best params:", args_trans(best))
-    print("best metrics:", -train_dsl_by_vd(best))
+    
+    # print optimal searching result
+    print("[result] best params:", args_trans(best))
+    print("[result] best metrics:", -train_dsl_by_vd(best))
 
-def main(filename):
-    global Logval, eval_cnt, time_start
+def main(filepath):
+    global Logval, eval_cnt
     global train_X, train_y, validation_X, validation_y
 
     # load data
     train_data, validation_data = load_data(
-        filename,
-        discount=SPLIT_RATIO,
+        filepath,
+        t_col=COLUMN_T,
+        e_col=COLUMN_E,
+        normalize=IS_NORM,
+        split_ratio=SPLIT_RATIO,
         seed=SPLIT_SEED
     )
-    # transform data
-    train_data = survival_df(train_data, t_col=COL_T, e_col=COL_E, label_col='Y')
-    validation_data = survival_df(validation_data, t_col=COL_T, e_col=COL_E, label_col='Y')
-    # get x and labels
-    train_X = train_data[list(train_data.columns)[:-1]]
+
+    # transform dataset to the format of survival data
+    train_data = survival_df(train_data, t_col=COLUMN_T, e_col=COLUMN_E, label_col='Y')
+    validation_data = survival_df(validation_data, t_col=COLUMN_T, e_col=COLUMN_E, label_col='Y')
+    
+    # get X and Y (labels)
+    columns = list(train_data.columns)
+    train_X = train_data[columns[:-1]]
     train_y = train_data[['Y']]
-    validation_X = validation_data[list(validation_data.columns)[:-1]]
+    validation_X = validation_data[columns[:-1]]
     validation_y = validation_data[['Y']]
 
-    # assign values for global variables
+    # assign values to global variables
     Logval = []
     eval_cnt = 0
-    time_start = time.clock()
 
-    print("No. of Samples for Searching Params: ", len(train_X))
+    print("Number of Dataset: ", len(train_X))
     print("Hidden Layers of Network: ", HIDDEN_LAYERS)
     
     # start searching params
-    search_params(max_evals = MAX_EVALS)
+    search_params(max_evals=MAX_EVALS)
 
 if __name__ == "__main__":
-    main(INPUT_FILE_DIR + INPUT_FILE_NAME)
+    main(os.path.join(WORK_DIR, DATA_PATH))
     
