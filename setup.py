@@ -36,7 +36,8 @@ setup(name=pkg_name,
         'pandas>=0.24.2',
         'numpy>=1.14.5',
         'matplotlib>=3.0.3',
-        'lifelines>=0.14.6'
+        'lifelines>=0.14.6',
+        'scikit-learn'
     ],
     include_package_data=True,
 )
