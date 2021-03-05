@@ -22,6 +22,7 @@ Read FAQ below firstly if you have problems or directly send an email to me.
 ## 2. Contributors
 
 Special thanks to those who contributed or gave helpful suggestions (Github account or nickname instead):
+- [taketakeseijin](https://github.com/taketakeseijin)
 - [rmaanyam](https://github.com/rmaanyam)
 - [yiyansong](https://github.com/yiyansong)
 - H. Quan
